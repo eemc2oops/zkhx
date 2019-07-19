@@ -1,2 +1,4 @@
 https://www.infradead.org/~mchehab/rst_conversion/driver-api/rapidio/index.html
 http://processors.wiki.ti.com/index.php/Linux_Core_RapidIO_User's_Guide
+https://lwn.net/Articles/139118/
+https://www.kernel.org/doc/htmldocs/rapidio/drivers.html

@@ -1,0 +1,15 @@
+﻿The S-RIO MAC contains an ingress packet buffer (PBMi) that is implemented as a shared memory among multiple queues  with 288 data nodes of 32 bytes each
+ingress packet buffer   有 288个 nodes，每个nodes有32字节
+
+
+The Tsi721 supports two S-RIO error reporting methods:
+• To remote S-RIO host through generating S-RIO port-write packets (see S-RIO Event Management)
+• To local PCIe root complex through PCIe INTx/MSI/MSI-X (see Interrupt Handling)
+
+
+section 6.6   page 117
+maintenance的 读/读响应 写/写响应都支持    page 116
+
+port write 是 maintenance写端口 消息
+ftype 8  ttype 0b0100
+

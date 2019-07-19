@@ -503,6 +503,9 @@ struct rio_driver {
 
 #define	to_rio_driver(drv) container_of(drv,struct rio_driver, driver)
 
+// maintenance port write request 16-bytes data payload
+// user page 120
+// tsi721_pw_dpc 里获取本消息
 union rio_pw_msg {
 	struct {
 		u32 comptag;	/* Component Tag CSR */
