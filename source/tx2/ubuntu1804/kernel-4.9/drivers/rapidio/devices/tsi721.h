@@ -520,6 +520,10 @@ extern u32 tsi_dbg_level;
 /*
  * Block DMA Descriptors
  */
+// user manual page 195    data transfer descriptor
+// user manual page 198    immediate data transfer descriptor
+// user manual page 201    block pointer desciptor
+//  195 / 198 / 201  的区别在 page 193 描述
 // tsi721_bdma_maint.bd_base    tsi721_bdma_maint.bd_phys
 struct tsi721_dma_desc {
 	__le32 type_id;
@@ -629,6 +633,7 @@ struct tsi721_omsg_desc {
 	};
 
 } __aligned(16);
+// user manual page 202
 // tsi721_omsg_ring.sts_base
 // tsi721_bdma_maint.sts_base   tsi721_bdma_maint.sts_phys
 struct tsi721_dma_sts {
@@ -706,16 +711,17 @@ struct tsi721_tx_desc {
 	unsigned int			sg_len;
 	enum dma_status			status;
 };
-// tsi721_device.bdma
+// tsi721_register_dma 里初始化
+// tsi721_device.bdma[]
 struct tsi721_bdma_chan {
-	int		id;
-	void __iomem	*regs; // 指向 dma 操作的基地址 bar0 里面的地址  tsi721_register_dma 里注册
-	int		bd_num;		/* number of HW buffer descriptors */
-	void		*bd_base;	/* start of DMA descriptors */
-	dma_addr_t	bd_phys;
-	void		*sts_base;	/* start of DMA BD status FIFO */
-	dma_addr_t	sts_phys;
-	int		sts_size;
+	int		id;     // 0 ~ 7   和 tsi721_device.bdma[i] 里的i一致
+	void __iomem	*regs; // 指向 dma 操作的基地址 bar0 里面的地址 TSI721_DMAC_BASE  ( 0x51000 ) tsi721_register_dma 里注册
+	int		bd_num;		/* number of HW buffer descriptors */  // tsi721_bdma_ch_init 里赋值   
+	void		*bd_base;	/* start of DMA descriptors */    // VA  tsi721_bdma_ch_init 里申请 DMA 空间       结构    bd_num + 1 个   tsi721_dma_desc
+	dma_addr_t	bd_phys;                                      //  PA 
+	void		*sts_base;	/* start of DMA BD status FIFO */   // VA  一共 sts_size 个 tsi721_dma_sts      tsi721_bdma_ch_init  里初始化
+	dma_addr_t	sts_phys;                                     // PA
+	int		sts_size;                                        //  状态个数 与 bd_num 相关
 	u32		sts_rdptr;
 	u32		wr_count;
 	u32		wr_count_next;
@@ -723,11 +729,12 @@ struct tsi721_bdma_chan {
 	struct dma_chan		dchan;
 	struct tsi721_tx_desc	*tx_desc;
 	spinlock_t		lock;
-	struct tsi721_tx_desc	*active_tx;
+	struct tsi721_tx_desc	*active_tx;  // 初始化为 NULL
 	struct list_head	queue;
 	struct list_head	free_list;
-	struct tasklet_struct	tasklet;  // tsi721_register_dma 里初始化      对应函数 tsi721_dma_tasklet
-	bool			active;
+	struct tasklet_struct	tasklet;  // tsi721_register_dma 里初始化    成回调函数 tasklet.func = tsi721_dma_tasklet
+	bool			active;   // 初始化为 false 
+	                          //  tsi721_alloc_chan_resources 里置为 true
 };
 
 #endif /* CONFIG_RAPIDIO_DMA_ENGINE */
@@ -816,9 +823,10 @@ enum tsi721_flags {
 #define TSI721_MSIX_I2C_INT		69
 
 /* MSI-X vector and init table entry indexes */
+// tsi721_device.msix[] 的下标
 enum tsi721_msix_vect {
-	TSI721_VECT_IDB,
-	TSI721_VECT_PWRX, /* PW_RX is part of SRIO MAC Interrupt reporting */
+	TSI721_VECT_IDB,    //  tsi721_sr2pc_ch_msix          tsi721_request_msix 里挂的中断
+	TSI721_VECT_PWRX, /* PW_RX is part of SRIO MAC Interrupt reporting */   // tsi721_srio_msix         tsi721_request_msix 里挂的中断
 	TSI721_VECT_OMB0_DONE,
 	TSI721_VECT_OMB1_DONE,    //  tsi721_open_outb_mbox 里初始化
 	TSI721_VECT_OMB2_DONE,
@@ -863,34 +871,40 @@ struct msix_irq {
 	char	irq_name[IRQ_DEVICE_NAME_MAX];
 };
 #endif /* CONFIG_PCI_MSI */
-
+// tsi721_rio_map_inb_mem 里分配
 struct tsi721_ib_win_mapping {
-	struct list_head node;
-	dma_addr_t	lstart;
+	struct list_head node;   // 挂到 tsi721_ib_win.mappings 队列里
+	dma_addr_t	lstart;     // DMA 的 PA
+	                        //  DMA 地址在 rio_mport_create_inbound_mapping 里申请 
 };
-
+// tsi721_device.ib_win[]
 struct tsi721_ib_win {
-	u64		rstart;
+	u64		rstart;    //  ioctl 时 用户传入的地址           rio_mmap.rio_addr
 	u32		size;
-	dma_addr_t	lstart;
-	bool		active;
-	bool		xlat;
-	struct list_head mappings;
+	dma_addr_t	lstart;   //  DMA 的物理地址
+	bool		active;   // tsi721_rio_map_inb_mem 里赋 true
+	bool		xlat;    // 用户传入的地址 不等于 物理地址                     即用户传入的时候，地址填了有效值 (不是 RIO_MAP_ANY_ADDR )
+	struct list_head mappings;   // tsi721_ib_win_mapping.node 挂在这个队列里
 };
-
+// tsi721_device.p2r_bar
+// tsi721_probe 里初始化， 表示  bar2 / bar4 的基地址和长度
 struct tsi721_obw_bar {
-	u64		base;
-	u64		size;
-	u64		free;
+	u64		base;   //  bar 的基地址
+	u64		size;  //  bar 的大小
+	u64		free;    //  bar 的可用空间
+	                 //  tsi721_init_pc2sr_mapping  里初始化成 size 大小
+	                 // tsi721_obw_alloc 里维护
 };
-
+// tsi721_device.ob_win
+// tsi721_obw_alloc 里初始化
 struct tsi721_ob_win {
-	u64		base;
-	u32		size;
-	u16		destid;
+	u64		base;   // 指向 bar2 or bar4 里的一个起始地址
+	u32		size;    // 用户指定的大小
+	u16		destid;   // dest device id    用户指定        tsi721_map_outb_win
 	u64		rstart;
-	bool		active;
-	struct tsi721_obw_bar *pbar;
+	bool		active;  //  可用状态
+	                     //  tsi721_init_pc2sr_mapping  里初始化成 false
+	struct tsi721_obw_bar *pbar;   // 指向申请到的空间属于哪个 bar tsi721_device.p2r_bar[0] / tsi721_device.p2r_bar[1]
 };
 // tsi721_probe 里初始化这个结构
 struct tsi721_device {
@@ -937,13 +951,19 @@ struct tsi721_device {
 	struct tsi721_omsg_ring	omsg_ring[TSI721_OMSG_CHNUM];  // omsg_ring[1] 进行了初始化         tsi721_open_outb_mbox
 
 	/* Inbound Mapping Windows */
-	struct tsi721_ib_win ib_win[TSI721_IBWIN_NUM];
-	int		ibwin_cnt;
+	struct tsi721_ib_win ib_win[TSI721_IBWIN_NUM];   // mapping window
+	                                                //  tsi721_rio_map_inb_mem 里判断赋值
+	int		ibwin_cnt;               // 可用的 inbound win
+	                                 // tsi721_init_sr2pc_mapping 里初始化成8 
+	                                 // tsi721_rio_map_inb_mem 里成功申请一个 window         就把这个值 减1
 
 	/* Outbound Mapping Windows */
-	struct tsi721_obw_bar p2r_bar[2];
-	struct tsi721_ob_win  ob_win[TSI721_OBWIN_NUM];
-	int		obwin_cnt;
+	struct tsi721_obw_bar p2r_bar[2];   //  tsi721_probe  里赋值    表示 bar2 / bar4 的基地址和长度
+	                                    // tsi721_map_outb_win  里判断
+	struct tsi721_ob_win  ob_win[TSI721_OBWIN_NUM];    //
+	                                                   // tsi721_map_outb_win 里赋值
+	int		obwin_cnt;      //   空闲可用的 ob win 个数            一个bar (bar2/bar4)里有8个win        但是tsi721一共只支持8个win，所以bar2 + bar4一共可以使用8个win                         tsi721_obw_alloc
+	                        //   tsi721_init_pc2sr_mapping  里赋成 8   
 };
 
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE

@@ -582,7 +582,7 @@ static void tsi721_advance_work(struct tsi721_bdma_chan *bdma_chan,
 	tsi_debug(DMA, &bdma_chan->dchan.dev->device, "DMAC%d Exit",
 		  bdma_chan->id);
 }
-// tsi721_register_dma 里初始化
+// tsi721_register_dma 里注册成回调函数 
 // DMA 中断的延时处理  由 tsi721_bdma_msix 激活
 static void tsi721_dma_tasklet(unsigned long data)
 {

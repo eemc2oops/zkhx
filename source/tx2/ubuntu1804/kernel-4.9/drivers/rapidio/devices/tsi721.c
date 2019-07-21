@@ -877,7 +877,7 @@ static void tsi721_free_irq(struct tsi721_device *priv)
 #endif
 	free_irq(priv->pdev->irq, (void *)priv);
 }
-
+// tsi721_map_outb_win -> tsi721_obw_alloc
 static int
 tsi721_obw_alloc(struct tsi721_device *priv, struct tsi721_obw_bar *pbar,
 		 u32 size, int *win_id)
@@ -941,7 +941,7 @@ tsi721_obw_alloc(struct tsi721_device *priv, struct tsi721_obw_bar *pbar,
 	*win_id = new_win_idx;
 	return 0;
 }
-
+// rio_map_outb_region -> tsi721_map_outb_win
 static int tsi721_map_outb_win(struct rio_mport *mport, u16 destid, u64 rstart,
 			u32 size, u32 flags, dma_addr_t *laddr)
 {
@@ -1110,6 +1110,7 @@ static void tsi721_init_pc2sr_mapping(struct tsi721_device *priv)
  * This function will create the inbound mapping
  * from rstart to lstart.
  */
+// rio_map_inb_region -> tsi721_rio_map_inb_mem
 static int tsi721_rio_map_inb_mem(struct rio_mport *mport, dma_addr_t lstart,
 		u64 rstart, u64 size, u32 flags)
 {
@@ -2581,6 +2582,7 @@ static int tsi721_messages_init(struct tsi721_device *priv)
  *
  * Returns pointer to the message on success or NULL on failure.
  */
+// rio_query_mport -> tsi721_query_mport
 static int tsi721_query_mport(struct rio_mport *mport,
 			      struct rio_mport_attr *attr)
 {
@@ -2742,7 +2744,7 @@ static int tsi721_setup_mport(struct tsi721_device *priv)
 	}
 
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
-	err = tsi721_register_dma(priv);   // 挂 DMA 中断
+	err = tsi721_register_dma(priv);
 	if (err)
 		goto err_exit;
 #endif

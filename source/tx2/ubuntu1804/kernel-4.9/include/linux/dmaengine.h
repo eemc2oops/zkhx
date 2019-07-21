@@ -259,18 +259,21 @@ struct dma_router {
  * @route_data: channel specific data for the router
  * @private: private data for certain client-channel associations
  */
+// tsi721 : tsi721_register_dma 里初始化
+// tsi721_bdma_chan.dchan      tsi721_device.bdma[].dchan
 struct dma_chan {
 	struct dma_device *device;  // tsi721 : rio_mport.dma     tsi721_register_dma 里赋值
-	dma_cookie_t cookie;
+	dma_cookie_t cookie;   // tsi721 : 1 
 	dma_cookie_t completed_cookie;
 
 	/* sysfs */
-	int chan_id;
-	struct dma_chan_dev *dev;
+	int chan_id;   // tsi721 : 0 ~ 7   和 tsi721_device.bdma[i] 里的i一致
+	struct dma_chan_dev *dev;  // dma_async_device_register 里初始化
 
 	struct list_head device_node;   // tsi721 : 挂到    rio_mport.dma.channels 队列里   tsi721_register_dma 里挂队列
-	struct dma_chan_percpu __percpu *local;
-	int client_count;
+	struct dma_chan_percpu __percpu *local;  // dma_async_device_register 里初始化
+	int client_count;   // dma_chan_get 里赋值
+	                   // balance_ref_count 也会修改这个值
 	int table_count;
 
 	/* DMA router */
@@ -287,6 +290,7 @@ struct dma_chan {
  * @dev_id: parent dma_device dev_id
  * @idr_ref: reference count to gate release of dma_device dev_id
  */
+// dma_chan.dev
 struct dma_chan_dev {
 	struct dma_chan *chan;
 	struct device device;
@@ -712,16 +716,20 @@ struct dma_filter {
  * @device_issue_pending: push pending transactions to hardware
  * @descriptor_reuse: a submitted transfer can be resubmitted after completion
  */
-// tsi721 : tsi721_register_dma 里申请本结构
+// rio_mport.dma
+// tsi721 : tsi721_register_dma 里初始化本结构
 struct dma_device {
 
-	unsigned int chancnt;
-	unsigned int privatecnt;
+	unsigned int chancnt;  // dma通道个数
+	                      // tsi721 : 8
+	unsigned int privatecnt;    // 表示有多少个 private chan
+	                            // tsi721 : 最终结果是      8
 	struct list_head channels;   //  tsi721 :  tsi721_device.bdma[].dchan.device_node  挂到这个队列里        tsi721_register_dma 里挂树
 	struct list_head global_node;  // 挂到    dma_device_list 队列里
 	                               //  dma_async_device_register 里挂队列
 	struct dma_filter filter;
-	dma_cap_mask_t  cap_mask;
+	dma_cap_mask_t  cap_mask;   //
+	                            // tsi721 : DMA_PRIVATE | DMA_SLAVE
 	unsigned short max_xor;
 	unsigned short max_pq;
 	enum dmaengine_alignment copy_align;
@@ -731,7 +739,8 @@ struct dma_device {
 	#define DMA_HAS_PQ_CONTINUE (1 << 15)
 
 	int dev_id;
-	struct device *dev;
+	struct device *dev;   // 指向实际的设备
+	                      // tsi721 : 指向 tsi721_device.pdev.dev     指向的是tsi721对应的pci设备
 
 	u32 src_addr_widths;
 	u32 dst_addr_widths;
@@ -1402,6 +1411,7 @@ void dma_async_device_unregister(struct dma_device *device);
 void dma_run_dependencies(struct dma_async_tx_descriptor *tx);
 struct dma_chan *dma_get_slave_channel(struct dma_chan *chan);
 struct dma_chan *dma_get_any_slave_channel(struct dma_device *device);
+// rio_request_mport_dma -> dma_request_channel
 #define dma_request_channel(mask, x, y) __dma_request_channel(&(mask), x, y)
 #define dma_request_slave_channel_compat(mask, x, y, dev, name) \
 	__dma_request_slave_channel_compat(&(mask), x, y, dev, name)

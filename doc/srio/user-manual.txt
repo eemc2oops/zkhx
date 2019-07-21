@@ -13,3 +13,15 @@ maintenance的 读/读响应 写/写响应都支持    page 116
 port write 是 maintenance写端口 消息
 ftype 8  ttype 0b0100
 
+page 189
+DMA descriptors reside in main memory connected through the PCIe Interface. For a DMA descriptor indicating a S-RIO
+NREAD or S-RIO maintenance read
+
+For a DMA descriptor indicating an S-RIO NWRITE/SWRITE/NWRITE_R, or a S-RIO maintenance write, DMA data source is
+main memory, source address is PCIe address in DMA descriptor
+
+
+page 195
+Block DMA  支持的格式 NREAD  /  NWRITE_R /   NWrite  /  SWRITE  /  Maintenance read   / Maintenance write
+
+

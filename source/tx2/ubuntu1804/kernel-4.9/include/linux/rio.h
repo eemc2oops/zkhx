@@ -392,8 +392,9 @@ enum rio_mport_flags {
  * @dma_max_size: max number of bytes in single DMA transfer (SG entry)
  * @dma_align: alignment shift for DMA operations (as for other DMA operations)
  */
+// tsi721 : tsi721_query_mport 里获取本结构
 struct rio_mport_attr {
-	int flags;
+	int flags;   // tsi721 : RIO_MPORT_DMA | RIO_MPORT_DMA_SG
 	int link_speed;
 	int link_width;
 
@@ -431,36 +432,55 @@ struct rio_ops {
     // read write 接口参见 rio-access.c  __rio_local_read_config_32      rio_mport_read_config_32  等
 	int (*lcread) (struct rio_mport *mport, int index, u32 offset, int len,    // 在 __rio_local_read_config_32 (16/8) 里调用
 			u32 *data);                                                       // tsi721 : tsi721_lcread
+
 	int (*lcwrite) (struct rio_mport *mport, int index, u32 offset, int len,  // 在 __rio_local_write_config_32 (16/8) 里调用
 			u32 data);                                                         // tsi721 : tsi721_lcwrite
+
 	int (*cread) (struct rio_mport *mport, int index, u16 destid,            // 在 rio_mport_read_config_32 (16/8) 里调用
 			u8 hopcount, u32 offset, int len, u32 *data);                     // tsi721 : tsi721_cread_dma
+
 	int (*cwrite) (struct rio_mport *mport, int index, u16 destid,            // 在  rio_mport_write_config_32 (16/8) 里调用
 			u8 hopcount, u32 offset, int len, u32 data);                     //  tsi 721 : tsi721_cwrite_dma
+
 	int (*dsend) (struct rio_mport *mport, int index, u16 destid, u16 data);   // rio_mport_send_doorbell 里调用
 	                                                                           // tsi721 : tsi721_dsend
+
 	int (*pwenable) (struct rio_mport *mport, int enable);  // rio_pw_enable 里调用
 	                                                        // tsi721 : tsi721_pw_enable
+
 	int (*open_outb_mbox)(struct rio_mport *mport, void *dev_id,   //  rio_request_outb_mbox 里调用
 			      int mbox, int entries);                     // tsi721 : tsi721_open_outb_mbox
+
 	void (*close_outb_mbox)(struct rio_mport *mport, int mbox);
+
 	int  (*open_inb_mbox)(struct rio_mport *mport, void *dev_id,     // rio_request_inb_mbox 里调用
 			     int mbox, int entries);                             //  tsi721 : tsi721_open_inb_mbox
-	void (*close_inb_mbox)(struct rio_mport *mport, int mbox);
+
+	void (*close_inb_mbox)(struct rio_mport *mport, int mbox);         //
+	                                                                  // tsi721 : tsi721_close_inb_mbox
+
 	int  (*add_outb_message)(struct rio_mport *mport, struct rio_dev *rdev,
 				 int mbox, void *buffer, size_t len);
+
 	int (*add_inb_buffer)(struct rio_mport *mport, int mbox, void *buf);   // rio_add_inb_buffer 里调用
 	                                                                        //  tsi721 : tsi721_add_inb_buffer
+
 	void *(*get_inb_message)(struct rio_mport *mport, int mbox);          //  rio_get_inb_message 里调用
 	                                                                   // tsi721 : tsi721_get_inb_message
-	int (*map_inb)(struct rio_mport *mport, dma_addr_t lstart,
-			u64 rstart, u64 size, u32 flags);
-	void (*unmap_inb)(struct rio_mport *mport, dma_addr_t lstart);
+
+	int (*map_inb)(struct rio_mport *mport, dma_addr_t lstart,            //   rio_map_inb_region 里调用
+			u64 rstart, u64 size, u32 flags);                            // tsi721 : tsi721_rio_map_inb_mem
+
+	void (*unmap_inb)(struct rio_mport *mport, dma_addr_t lstart);      //
+	                                                                   // tsi721 : tsi721_rio_unmap_inb_mem
 	int (*query_mport)(struct rio_mport *mport,
 			   struct rio_mport_attr *attr);
-	int (*map_outb)(struct rio_mport *mport, u16 destid, u64 rstart,
-			u32 size, u32 flags, dma_addr_t *laddr);
-	void (*unmap_outb)(struct rio_mport *mport, u16 destid, u64 rstart);
+
+	int (*map_outb)(struct rio_mport *mport, u16 destid, u64 rstart,   //  rio_map_outb_region 里调用
+			u32 size, u32 flags, dma_addr_t *laddr);                   // tsi721 : tsi721_map_outb_win
+
+	void (*unmap_outb)(struct rio_mport *mport, u16 destid, u64 rstart);  //
+	                                                                      // tsi721 : tsi721_unmap_outb_win
 };
 
 #define RIO_RESOURCE_MEM	0x00000100

@@ -121,18 +121,23 @@ enum rio_mport_map_dir {
 	MAP_OUTBOUND,
 	MAP_DMA,
 };
-
+// rio_mport_create_dma_mapping 里初始化        block dma 初始化流程
+// rio_mport_create_inbound_mapping  里初始化  ， 跟据用户输入的内存大小，创建DMA空间
 struct rio_mport_mapping {
-	struct list_head node;
+	struct list_head node;  // 挂到 mport_dev.mappings 里
+	                       // rio_mport_create_dma_mapping 里挂树
+	                       // rio_mport_create_inbound_mapping 里挂树
 	struct mport_dev *md;
-	enum rio_mport_map_dir dir;
+	enum rio_mport_map_dir dir;   // MAP_DMA            rio_mport_create_dma_mapping 里初始化
+	                              // MAP_INBOUND        rio_mport_get_inbound_mapping  里判断 
+	                              // MAP_INBOUND        rio_mport_create_inbound_mapping  里初始化，跟据用户传入的内存大小，申请DMA空间，用作inbound map。
 	u16 rioid;
-	u64 rio_addr;
-	dma_addr_t phys_addr; /* for mmap */
-	void *virt_addr; /* kernel address, for dma_free_coherent */
-	u64 size;
+	u64 rio_addr;      // 创建 inbound mappng 的时候 用户传入的地址   rio_mport_create_inbound_mapping   
+	dma_addr_t phys_addr; /* for mmap */                              //  DMA 空间的 PA     大小是 size 个字节
+	void *virt_addr; /* kernel address, for dma_free_coherent */      //  DMA 空间的 VA  大小是 size 个字节 
+	u64 size;                                                         //  DMA 空间的大小
 	struct kref ref; /* refcount of vmas sharing the mapping */
-	struct file *filp;
+	struct file *filp;    // 指向用户操作的字符设备
 };
 
 struct rio_mport_dma_map {
@@ -178,7 +183,7 @@ struct mport_dev {
 	struct mutex		file_mutex;
 	struct list_head	file_list;  // mport_cdev_priv.list 挂在这个队列里          mport_cdev_open 里挂队列
 	                                // 一个 mport_dev 对应一个字符设备，但字符设备可能被打开多次，能过这个链表，可以找到多个被打开的字符设备
-	struct rio_mport_properties	properties;
+	struct rio_mport_properties	properties;   // 在 mport_cdev_add 里赋值
 	struct list_head		doorbells;  // rio_mport_db_filter.data_node 挂在这个队列里
 	                                    // rio_mport_add_db_filter 里挂树
 	                                    // rio_mport_doorbell_handler 遍历
@@ -187,7 +192,9 @@ struct mport_dev {
 	                                       // rio_mport_add_pw_filter 挂树
 	                                        //  rio_mport_pw_handler  里遍历查找 
 	spinlock_t			pw_lock;
-	struct list_head	mappings;
+	struct list_head	mappings;   // rio_mport_mapping.node 挂在这里
+	                                // rio_mport_create_dma_mapping 里挂树
+	                                // rio_mport_create_inbound_mapping 里挂树
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
 	struct dma_chan *dma_chan;
 	struct kref	dma_ref;
@@ -396,6 +403,7 @@ out:
 /*
  * Inbound/outbound memory mapping functions
  */
+// rio_mport_get_outbound_mapping -> rio_mport_create_outbound_mapping
 static int
 rio_mport_create_outbound_mapping(struct mport_dev *md, struct file *filp,
 				  u16 rioid, u64 raddr, u32 size,
@@ -429,7 +437,7 @@ err_map_outb:
 	kfree(map);
 	return ret;
 }
-
+// rio_mport_obw_map -> rio_mport_get_outbound_mapping
 static int
 rio_mport_get_outbound_mapping(struct mport_dev *md, struct file *filp,
 			       u16 rioid, u64 raddr, u32 size,
@@ -589,7 +597,7 @@ struct mport_dma_req {
 	enum dma_data_direction dir;
 	dma_cookie_t cookie;
 	enum dma_status	status;
-	struct completion req_comp;
+	struct completion req_comp;  // do_dma_request 里等待这个状态
 };
 
 struct mport_faf_work {
@@ -721,6 +729,7 @@ static struct dma_async_tx_descriptor
  * mport. If a new DMA channel is not available use default channel
  * which is the first DMA channel opened on mport device.
  */
+// rio_dma_transfer -> get_dma_channel
 static int get_dma_channel(struct mport_cdev_priv *priv)
 {
 	mutex_lock(&priv->dma_lock);
@@ -1178,7 +1187,7 @@ err_tmo:
 	spin_unlock(&priv->req_lock);
 	return ret;
 }
-
+// rio_mport_alloc_dma -> rio_mport_create_dma_mapping
 static int rio_mport_create_dma_mapping(struct mport_dev *md, struct file *filp,
 			u64 size, struct rio_mport_mapping **mapping)
 {
@@ -1292,7 +1301,7 @@ static int rio_mport_free_dma(struct file *filp, void __user *arg)
 /*
  * Inbound/outbound memory mapping functions
  */
-
+// rio_mport_get_inbound_mapping -> rio_mport_create_inbound_mapping
 static int
 rio_mport_create_inbound_mapping(struct mport_dev *md, struct file *filp,
 				u64 raddr, u64 size,
@@ -1342,7 +1351,7 @@ err_dma_alloc:
 	kfree(map);
 	return ret;
 }
-
+// rio_mport_map_inbound -> rio_mport_get_inbound_mapping
 static int
 rio_mport_get_inbound_mapping(struct mport_dev *md, struct file *filp,
 			      u64 raddr, u64 size,
@@ -2550,7 +2559,7 @@ static struct mport_dev *mport_cdev_add(struct rio_mport *mport)
 #endif
 	ret = rio_query_mport(mport, &attr);
 	if (!ret) {
-		md->properties.flags = attr.flags;
+		md->properties.flags = attr.flags;  // tsi721 :  RIO_MPORT_DMA | RIO_MPORT_DMA_SG
 		md->properties.link_speed = attr.link_speed;
 		md->properties.link_width = attr.link_width;
 		md->properties.dma_max_sge = attr.dma_max_sge;

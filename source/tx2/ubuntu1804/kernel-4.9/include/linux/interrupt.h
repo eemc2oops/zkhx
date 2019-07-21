@@ -518,7 +518,7 @@ struct tasklet_struct
 	struct tasklet_struct *next;
 	unsigned long state;
 	atomic_t count;
-	void (*func)(unsigned long);   // tsi721 : tsi721_dma_tasklet         tsi721_register_dma 初始化
+	void (*func)(unsigned long);
 	unsigned long data;
 };
 

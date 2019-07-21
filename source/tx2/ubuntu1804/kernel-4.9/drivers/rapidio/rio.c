@@ -724,6 +724,7 @@ EXPORT_SYMBOL_GPL(rio_pw_enable);
  *
  * This function will create the mapping from RIO space to local memory.
  */
+// rio_mport_create_inbound_mapping -> rio_map_inb_region
 int rio_map_inb_region(struct rio_mport *mport, dma_addr_t local,
 			u64 rbase, u32 size, u32 rflags)
 {
@@ -733,7 +734,7 @@ int rio_map_inb_region(struct rio_mport *mport, dma_addr_t local,
 	if (!mport->ops->map_inb)
 		return -1;
 	spin_lock_irqsave(&rio_mmap_lock, flags);
-	rc = mport->ops->map_inb(mport, local, rbase, size, rflags);
+	rc = mport->ops->map_inb(mport, local, rbase, size, rflags);   // tsi721 : tsi721_rio_map_inb_mem
 	spin_unlock_irqrestore(&rio_mmap_lock, flags);
 	return rc;
 }
@@ -768,6 +769,7 @@ EXPORT_SYMBOL_GPL(rio_unmap_inb_region);
  *
  * This function will create the mapping from RIO space to local memory.
  */
+// rio_mport_create_outbound_mapping -> rio_map_outb_region
 int rio_map_outb_region(struct rio_mport *mport, u16 destid, u64 rbase,
 			u32 size, u32 rflags, dma_addr_t *local)
 {
@@ -778,7 +780,7 @@ int rio_map_outb_region(struct rio_mport *mport, u16 destid, u64 rbase,
 		return -ENODEV;
 
 	spin_lock_irqsave(&rio_mmap_lock, flags);
-	rc = mport->ops->map_outb(mport, destid, rbase, size,
+	rc = mport->ops->map_outb(mport, destid, rbase, size,    // tsi721 : tsi721_map_outb_win
 		rflags, local);
 	spin_unlock_irqrestore(&rio_mmap_lock, flags);
 
@@ -1867,6 +1869,7 @@ static bool rio_chan_filter(struct dma_chan *chan, void *arg)
  *
  * Returns pointer to allocated DMA channel or NULL if failed.
  */
+// get_dma_channel -> rio_request_mport_dma
 struct dma_chan *rio_request_mport_dma(struct rio_mport *mport)
 {
 	dma_cap_mask_t mask;

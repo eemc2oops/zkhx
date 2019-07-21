@@ -67,9 +67,12 @@
 
 static DEFINE_MUTEX(dma_list_mutex);
 static DEFINE_IDR(dma_idr);
-static LIST_HEAD(dma_device_list);   // dma_device.global_node  挂到这个队列里  
+// 方便代码阅读修改
+static struct list_head dma_device_list;
+// static LIST_HEAD(dma_device_list);   // dma_device.global_node  挂到这个队列里  
                                      //  dma_async_device_register 挂队列
-static long dmaengine_ref_count;
+static long dmaengine_ref_count;  // dma_async_device_register 判断
+                                  // dmaengine_get 里增加
 
 /* --- sysfs implementation --- */
 
@@ -170,7 +173,7 @@ static void chan_dev_release(struct device *dev)
 	}
 	kfree(chan_dev);
 }
-
+// dma_async_device_register 里用到
 static struct class dma_devclass = {
 	.name		= "dma",
 	.dev_groups	= dma_dev_groups,
@@ -220,6 +223,7 @@ static void balance_ref_count(struct dma_chan *chan)
  * Must be called under dma_list_mutex
  */
 // dma_async_device_register -> dma_chan_get
+// find_candidate -> dma_chan_get       tsi721 的 alloc chan 流程
 static int dma_chan_get(struct dma_chan *chan)
 {
 	struct module *owner = dma_chan_to_owner(chan);
@@ -236,7 +240,7 @@ static int dma_chan_get(struct dma_chan *chan)
 
 	/* allocate upon first client reference */
 	if (chan->device->device_alloc_chan_resources) {
-		ret = chan->device->device_alloc_chan_resources(chan);
+		ret = chan->device->device_alloc_chan_resources(chan);    // tsi721 : tsi721_alloc_chan_resources
 		if (ret < 0)
 			goto err_out;
 	}
@@ -551,7 +555,7 @@ static struct dma_chan *private_candidate(const dma_cap_mask_t *mask,
 
 	return NULL;
 }
-
+// __dma_request_channel -> find_candidate
 static struct dma_chan *find_candidate(struct dma_device *device,
 				       const dma_cap_mask_t *mask,
 				       dma_filter_fn fn, void *fn_param)
@@ -651,6 +655,7 @@ EXPORT_SYMBOL_GPL(dma_get_any_slave_channel);
  *
  * Returns pointer to appropriate DMA channel on success or NULL.
  */
+// rio_request_mport_dma -> dma_request_channel -> __dma_request_channel
 struct dma_chan *__dma_request_channel(const dma_cap_mask_t *mask,
 				       dma_filter_fn fn, void *fn_param)
 {
@@ -800,6 +805,7 @@ EXPORT_SYMBOL_GPL(dma_release_channel);
 /**
  * dmaengine_get - register interest in dma_channels
  */
+// async_dmaengine_get -> dmaengine_get
 void dmaengine_get(void)
 {
 	struct dma_device *device, *_d;
@@ -1012,7 +1018,7 @@ int dma_async_device_register(struct dma_device *device)
 
 	mutex_lock(&dma_list_mutex);
 	/* take references on public channels */
-	if (dmaengine_ref_count && !dma_has_cap(DMA_PRIVATE, device->cap_mask))
+	if (dmaengine_ref_count && !dma_has_cap(DMA_PRIVATE, device->cap_mask))   // 由于 DMA_PRIVATE 这个限制条件 tsi721 初始化的时候，不进入这个分支
 		list_for_each_entry(chan, &device->channels, device_node) {
 			/* if clients are already waiting for channels we need
 			 * to take references on their behalf

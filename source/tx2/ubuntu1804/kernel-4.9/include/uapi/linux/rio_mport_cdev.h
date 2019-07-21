@@ -64,21 +64,22 @@ struct rio_mport_maint_io {
 #define RIO_CAP_PW_RECV			(1 << 5)
 #define RIO_CAP_MAP_OUTB		(1 << 6)
 #define RIO_CAP_MAP_INB			(1 << 7)
-
+// mport_dev.properties
+// mport_cdev_add 里赋值
 struct rio_mport_properties {
-	__u16 hdid;
+	__u16 hdid;             //  device id
 	__u8  id;			/* Physical port ID */
-	__u8  index;
-	__u32 flags;
+	__u8  index;          // driver index num 
+	__u32 flags;       //   tsi721 :  RIO_MPORT_DMA | RIO_MPORT_DMA_SG
 	__u32 sys_size;		/* Default addressing size */
-	__u8  port_ok;
-	__u8  link_speed;
+	__u8  port_ok;     //  link status
+	__u8  link_speed;     // link speed    =0 说明没有协商上
 	__u8  link_width;
 	__u8  pad0;
 	__u32 dma_max_sge;
 	__u32 dma_max_size;
 	__u32 dma_align;
-	__u32 transfer_mode;		/* Default transfer mode */
+	__u32 transfer_mode;		/* Default transfer mode */   // RIO_TRANSFER_MODE_TRANSFER
 	__u32 cap_sys_size;		/* Capable system sizes */
 	__u32 cap_addr_size;		/* Capable addressing sizes */
 	__u32 cap_transfer_mode;	/* Capable transfer modes */
@@ -125,13 +126,16 @@ struct rio_pw_filter {
  * and driver should use direct (one-to-one) address mapping.
 */
 #define RIO_MAP_ANY_ADDR	(__u64)(~((__u64) 0))
-
+// 入参：用户提供的参数
+// mport_cdev_ioctl ( RIO_MAP_INBOUND ) -> rio_mport_map_inbound 
+// mport_cdev_ioctl ( RIO_MAP_OUTBOUND ) -> rio_mport_obw_map
 struct rio_mmap {
-	__u16 rioid;
+	__u16 rioid;        //  map outbound 里填的参数       表示 dest id
 	__u16 pad0[3];
-	__u64 rio_addr;
-	__u64 length;
-	__u64 handle;
+	__u64 rio_addr;     // 入参 和 出参
+	                    //  可以取 RIO_MAP_ANY_ADDR        用法见    rio_mport_create_inbound_mapping
+	__u64 length;      // 入参
+	__u64 handle;      // 出参      DMA 的物理地址
 	__u64 address;
 };
 
