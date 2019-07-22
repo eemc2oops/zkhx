@@ -138,11 +138,13 @@ struct rio_mmap {
 	__u64 handle;      // 出参      DMA 的物理地址
 	__u64 address;
 };
-
+// 用户传入参数
+// mport_cdev_ioctl ( RIO_ALLOC_DMA ) -> rio_mport_alloc_dma
 struct rio_dma_mem {
-	__u64 length;		/* length of DMA memory */
+	__u64 length;		/* length of DMA memory */   // 入参的有效参数
 	__u64 dma_handle;	/* handle associated with this memory */
-	__u64 address;
+	__u64 address;  // 入参的有效参数  
+	                // 可以取 RIO_MAP_ANY_ADDR
 };
 // rio_mport_doorbell_handler   生成 doorbell 的流程
 struct rio_event {

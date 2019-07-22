@@ -116,6 +116,7 @@ struct mport_dma_buf {
 /*
  * Internal memory mapping structure
  */
+// rio_mport_mapping.dir
 enum rio_mport_map_dir {
 	MAP_INBOUND,
 	MAP_OUTBOUND,
@@ -239,7 +240,8 @@ struct mport_cdev_priv {
 	                                                          // rio_mport_add_event  添加事件时判断事件是否需要上报
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
 	struct dma_chan		*dmach;
-	struct list_head	async_list;
+	struct list_head	async_list;   // 同步等待队列
+	                                  // rio_mport_wait_for_async_dma 里判断
 	struct list_head	pend_list;
 	spinlock_t              req_lock;
 	struct mutex		dma_lock;
@@ -583,7 +585,7 @@ static int maint_comptag_set(struct mport_cdev_priv *priv, void __user *arg)
 }
 
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
-
+// rio_mport_wait_for_async_dma 里判断
 struct mport_dma_req {
 	struct list_head node;
 	struct file *filp;
@@ -598,6 +600,7 @@ struct mport_dma_req {
 	dma_cookie_t cookie;
 	enum dma_status	status;
 	struct completion req_comp;  // do_dma_request 里等待这个状态
+	                             // rio_mport_wait_for_async_dma 里等待
 };
 
 struct mport_faf_work {
