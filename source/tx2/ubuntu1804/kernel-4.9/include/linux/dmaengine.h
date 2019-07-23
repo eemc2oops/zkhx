@@ -69,9 +69,9 @@ enum dma_transaction_type {
 	DMA_MEMSET_SG,
 	DMA_INTERRUPT,
 	DMA_SG,
-	DMA_PRIVATE,
+	DMA_PRIVATE,   // tsi721 : tsi721_register_dma
 	DMA_ASYNC_TX,
-	DMA_SLAVE,
+	DMA_SLAVE,    // tsi721 : tsi721_register_dma 
 	DMA_CYCLIC,
 	DMA_INTERLEAVE,
 /* last transaction type for creation of the capabilities mask */
@@ -85,6 +85,7 @@ enum dma_transaction_type {
  * @DMA_DEV_TO_MEM: Slave mode & From Device to Memory
  * @DMA_DEV_TO_DEV: Slave mode & From Device to Device
  */
+// do_dma_request 里使用
 enum dma_transfer_direction {
 	DMA_MEM_TO_MEM,
 	DMA_MEM_TO_DEV,
@@ -260,7 +261,7 @@ struct dma_router {
  * @private: private data for certain client-channel associations
  */
 // tsi721 : tsi721_register_dma 里初始化
-// tsi721_bdma_chan.dchan      tsi721_device.bdma[].dchan
+// tsi721_bdma_chan.dchan      tsi721_device.bdma[].dchan            dma_async_device_register 里初始化
 struct dma_chan {
 	struct dma_device *device;  // tsi721 : rio_mport.dma     tsi721_register_dma 里赋值
 	dma_cookie_t cookie;   // tsi721 : 1 
@@ -272,7 +273,8 @@ struct dma_chan {
 
 	struct list_head device_node;   // tsi721 : 挂到    rio_mport.dma.channels 队列里   tsi721_register_dma 里挂队列
 	struct dma_chan_percpu __percpu *local;  // dma_async_device_register 里初始化
-	int client_count;   // dma_chan_get 里赋值
+	int client_count;   // 表示 chan 被多少个地方使用
+	                    // dma_chan_get 里赋值
 	                   // balance_ref_count 也会修改这个值
 	int table_count;
 
@@ -489,14 +491,18 @@ struct dmaengine_unmap_data {
  * @parent: pointer to the next level up in the dependency chain
  * @lock: protect the parent and next pointers
  */
+// tsi721_tx_desc.txd              tsi721_alloc_chan_resources 里赋值
 struct dma_async_tx_descriptor {
 	dma_cookie_t cookie;
 	enum dma_ctrl_flags flags; /* not a 'long' to pack with cookie */
+	                             // tsi721 : 初始化成      DMA_CTRL_ACK
 	dma_addr_t phys;
-	struct dma_chan *chan;
-	dma_cookie_t (*tx_submit)(struct dma_async_tx_descriptor *tx);
+	struct dma_chan *chan;   // 
+	                          // tsi721 : dma_async_tx_descriptor_init 里赋值
+	dma_cookie_t (*tx_submit)(struct dma_async_tx_descriptor *tx);   //  tsi721 : tsi721_tx_submit         tsi721_alloc_chan_resources 里赋值
 	int (*desc_free)(struct dma_async_tx_descriptor *tx);
 	dma_async_tx_callback callback;   //  tsi721 : tsi721_dma_tasklet 里调用
+	                                    // tsi721 :  tsi721_dma_tx_err 里调用
 	                                  //  tsi721 : do_dma_request 里初始化
 	                                 //  tsi721 : 挂的接口是 dma_faf_callback ( RIO_TRANSFER_FAF )         dma_xfer_callback ( 其它 )
 	dma_async_tx_callback_result callback_result;
@@ -723,7 +729,7 @@ struct dma_device {
 	unsigned int chancnt;  // dma通道个数
 	                      // tsi721 : 8
 	unsigned int privatecnt;    // 表示有多少个 private chan
-	                            // tsi721 : 最终结果是      8
+	                            // tsi721 : 
 	struct list_head channels;   //  tsi721 :  tsi721_device.bdma[].dchan.device_node  挂到这个队列里        tsi721_register_dma 里挂树
 	struct list_head global_node;  // 挂到    dma_device_list 队列里
 	                               //  dma_async_device_register 里挂队列
@@ -809,7 +815,8 @@ struct dma_device {
 	enum dma_status (*device_tx_status)(struct dma_chan *chan,
 					    dma_cookie_t cookie,
 					    struct dma_tx_state *txstate);                // tsi721 : tsi721_tx_status
-	void (*device_issue_pending)(struct dma_chan *chan);              //  tsi721 : tsi721_issue_pending
+	void (*device_issue_pending)(struct dma_chan *chan);    // dma_async_issue_pending 里调用          
+	                                                        //  tsi721 : tsi721_issue_pending
 };
 
 static inline int dmaengine_slave_config(struct dma_chan *chan,
@@ -865,7 +872,7 @@ static inline struct dma_async_tx_descriptor *dmaengine_prep_rio_sg(
 		return NULL;
 
 	return chan->device->device_prep_slave_sg(chan, sgl, sg_len,
-						  dir, flags, rio_ext);
+						  dir, flags, rio_ext);    // tsi721 : tsi721_prep_rio_sg
 }
 #endif
 
@@ -1033,10 +1040,10 @@ static inline enum dma_status dmaengine_tx_status(struct dma_chan *chan,
 {
 	return chan->device->device_tx_status(chan, cookie, state);
 }
-
+// do_dma_request -> dmaengine_submit
 static inline dma_cookie_t dmaengine_submit(struct dma_async_tx_descriptor *desc)
 {
-	return desc->tx_submit(desc);
+	return desc->tx_submit(desc);   // tsi721 : tsi721_tx_submit
 }
 
 static inline bool dmaengine_check_align(enum dmaengine_alignment align,
@@ -1247,9 +1254,10 @@ __dma_has_cap(enum dma_transaction_type tx_type, dma_cap_mask_t *srcp)
  * This allows drivers to push copies to HW in batches,
  * reducing MMIO writes where possible.
  */
+// do_dma_request -> dma_async_issue_pending
 static inline void dma_async_issue_pending(struct dma_chan *chan)
 {
-	chan->device->device_issue_pending(chan);
+	chan->device->device_issue_pending(chan);  // tsi721 : tsi721_issue_pending
 }
 
 /**

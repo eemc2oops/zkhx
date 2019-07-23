@@ -222,7 +222,7 @@ static void balance_ref_count(struct dma_chan *chan)
  *
  * Must be called under dma_list_mutex
  */
-// dma_async_device_register -> dma_chan_get
+// dma_async_device_register -> dma_chan_get   tsi721 没走这个流程
 // find_candidate -> dma_chan_get       tsi721 的 alloc chan 流程
 static int dma_chan_get(struct dma_chan *chan)
 {
@@ -518,7 +518,7 @@ int dma_get_slave_caps(struct dma_chan *chan, struct dma_slave_caps *caps)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(dma_get_slave_caps);
-
+// find_candidate -> private_candidate   ( fn : rio_chan_filter   fn_param : rio_mport 实例 )
 static struct dma_chan *private_candidate(const dma_cap_mask_t *mask,
 					  struct dma_device *dev,
 					  dma_filter_fn fn, void *fn_param)
@@ -555,12 +555,12 @@ static struct dma_chan *private_candidate(const dma_cap_mask_t *mask,
 
 	return NULL;
 }
-// __dma_request_channel -> find_candidate
+// __dma_request_channel -> find_candidate  ( fn : rio_chan_filter       fn_param : rio_mport 实例 )
 static struct dma_chan *find_candidate(struct dma_device *device,
 				       const dma_cap_mask_t *mask,
 				       dma_filter_fn fn, void *fn_param)
 {
-	struct dma_chan *chan = private_candidate(mask, device, fn, fn_param);
+	struct dma_chan *chan = private_candidate(mask, device, fn, fn_param);  // 找到一个没使用的 dma chan
 	int err;
 
 	if (chan) {
@@ -1221,7 +1221,7 @@ dmaengine_get_unmap_data(struct device *dev, int nr, gfp_t flags)
 	return unmap;
 }
 EXPORT_SYMBOL(dmaengine_get_unmap_data);
-
+// tsi721_alloc_chan_resources -> dma_async_tx_descriptor_init
 void dma_async_tx_descriptor_init(struct dma_async_tx_descriptor *tx,
 	struct dma_chan *chan)
 {

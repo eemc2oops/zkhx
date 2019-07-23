@@ -197,7 +197,8 @@ struct mport_dev {
 	                                // rio_mport_create_dma_mapping 里挂树
 	                                // rio_mport_create_inbound_mapping 里挂树
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
-	struct dma_chan *dma_chan;
+	struct dma_chan *dma_chan;     //  指向 dma chan
+	                             //  get_dma_channel 里赋值
 	struct kref	dma_ref;
 	struct completion comp;
 #endif
@@ -239,8 +240,10 @@ struct mport_cdev_priv {
 	                                                        // 表示是通过字符设备的用户接口进行的赋值                      由用户控制哪些事件需要上报
 	                                                          // rio_mport_add_event  添加事件时判断事件是否需要上报
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
-	struct dma_chan		*dmach;
-	struct list_head	async_list;   // 同步等待队列
+	struct dma_chan		*dmach;    // get_dma_channel 里赋值
+	struct list_head	async_list;   // 同步等待队列        DMA  传输控制块挂在这里
+	                                  // mport_dma_req.node 挂在这里
+	                                  //  do_dma_request 挂树
 	                                  // rio_mport_wait_for_async_dma 里判断
 	struct list_head	pend_list;
 	spinlock_t              req_lock;
@@ -585,9 +588,12 @@ static int maint_comptag_set(struct mport_cdev_priv *priv, void __user *arg)
 }
 
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
+// DMA 传输的控制块
 // rio_mport_wait_for_async_dma 里判断
+// rio_dma_transfer 里申请本结构
 struct mport_dma_req {
-	struct list_head node;
+	struct list_head node;   // 挂到 mport_cdev_priv.async_list 队列里
+	                         // do_dma_request 里挂队列
 	struct file *filp;
 	struct mport_cdev_priv *priv;
 	enum rio_transfer_sync sync;
@@ -599,7 +605,7 @@ struct mport_dma_req {
 	enum dma_data_direction dir;
 	dma_cookie_t cookie;
 	enum dma_status	status;
-	struct completion req_comp;  // do_dma_request 里等待这个状态
+	struct completion req_comp;  // do_dma_request 里等待这个状态   写完DMA以后 (发送命令以后)，等对端响应
 	                             // rio_mport_wait_for_async_dma 里等待
 };
 
@@ -843,14 +849,15 @@ static int do_dma_request(struct mport_dma_req *req,
 
 	dma_async_issue_pending(chan);
 
-	if (sync == RIO_TRANSFER_ASYNC) {
+	if (sync == RIO_TRANSFER_ASYNC) {  // 异步
 		spin_lock(&priv->req_lock);
 		list_add_tail(&req->node, &priv->async_list);
 		spin_unlock(&priv->req_lock);
 		return cookie;
-	} else if (sync == RIO_TRANSFER_FAF)
+	} else if (sync == RIO_TRANSFER_FAF)  // 发送后不管
 		return 0;
 
+    // 同步
 	wret = wait_for_completion_interruptible_timeout(&req->req_comp, tmo);
 
 	if (wret == 0) {
@@ -893,6 +900,7 @@ err_out:
  * @xfer: data transfer descriptor structure
  */
 // rio_mport_transfer_ioctl -> rio_dma_transfer
+// sync 用户传入 : 取值  RIO_TRANSFER_SYNC 同步 /  RIO_TRANSFER_ASYNC 异步 /  RIO_TRANSFER_FAF  发送后不管 用在 write 命令  
 static int
 rio_dma_transfer(struct file *filp, u32 transfer_mode,
 		 enum rio_transfer_sync sync, enum dma_data_direction dir,

@@ -548,6 +548,7 @@ union rio_pw_msg {
  * for entire data transfer or their combination with only the last data packet
  * requires response.
  */
+// rio_dma_data.wr_type
 enum rio_write_type {
 	RDW_DEFAULT,		/* default method used by DMA driver */
 	RDW_ALL_NWRITE,		/* all packets use NWRITE */
@@ -570,6 +571,7 @@ struct rio_dma_data {
 	u64 rio_addr;	/* low 64-bits of 66-bit RapidIO address */
 	u8  rio_addr_u;  /* upper 2-bits of 66-bit RapidIO address */
 	enum rio_write_type wr_type; /* preferred RIO write operation type */
+	                              //  prep_dma_xfer  里赋值
 };
 
 static inline struct rio_mport *dma_to_mport(struct dma_device *ddev)

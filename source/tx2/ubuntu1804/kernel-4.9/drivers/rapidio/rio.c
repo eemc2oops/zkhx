@@ -1920,7 +1920,6 @@ EXPORT_SYMBOL_GPL(rio_release_dma);
  *          error-valued pointer or NULL if failed.
  */
 // prep_dma_xfer -> rio_dma_prep_xfer
-// rio_dma_prep_slave_sg -> rio_dma_prep_xfer
 struct dma_async_tx_descriptor *rio_dma_prep_xfer(struct dma_chan *dchan,
 	u16 destid, struct rio_dma_data *data,
 	enum dma_transfer_direction direction, unsigned long flags)

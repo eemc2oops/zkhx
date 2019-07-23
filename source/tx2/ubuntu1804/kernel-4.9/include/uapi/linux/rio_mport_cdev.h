@@ -159,7 +159,7 @@ struct rio_event {
 enum rio_transfer_sync {
 	RIO_TRANSFER_SYNC,	/* synchronous transfer */
 	RIO_TRANSFER_ASYNC,	/* asynchronous transfer */
-	RIO_TRANSFER_FAF,	/* fire-and-forget transfer */
+	RIO_TRANSFER_FAF,	/* fire-and-forget transfer */   // fire-and-forget transfer only for write transactions
 };
 // rio_transaction.dir 的值    接口参数，由用户指定
 enum rio_transfer_dir {
@@ -195,21 +195,22 @@ enum rio_exchange {
 	RIO_EXCHANGE_SWRITE_R,	/* Last packet NWRITE_R, others SWRITE */
 	RIO_EXCHANGE_NWRITE_R_ALL, /* All packets using NWRITE_R */
 };
-
+// rio_transaction 带的数据
+// 用户传入
 struct rio_transfer_io {
 	__u64 rio_addr;	/* Address in target's RIO mem space */
-	__u64 loc_addr;
-	__u64 handle;
+	__u64 loc_addr;  // rio_dma_transfer 里有区别        填参数时 与 handle 二选一
+	__u64 handle;   // 如果 ioctl 申请了 DMA ，这里填 Handle   rio_dma_transfer 里有区别  填参数时 与 loc_addr 二选一
 	__u64 offset;	/* Offset in buffer */
 	__u64 length;	/* Length in bytes */
 	__u16 rioid;	/* Target destID */
 	__u16 method;	/* Data exchange method, one of rio_exchange enum */
 	__u32 completion_code;	/* Completion code for this transfer */
 };
-
+// mport_cdev_ioctl ( RIO_TRANSFER ) 的参数   数据传输时用的
 struct rio_transaction {
-	__u64 block;	/* Pointer to array of <count> transfers */
-	__u32 count;	/* Number of transfers */
+	__u64 block;	/* Pointer to array of <count> transfers */   // 入参时表示 : rio_transfer_io 结构的用户态地址
+	__u32 count;	/* Number of transfers */   //  表示 count 个 rio_transfer_io 结构    当前驱动仅支持 count = 1
 	__u32 transfer_mode;	/* Data transfer mode */
 	                        // RIO_TRANSFER_MODE_TRANSFER     tsi721里 目前只看到这个用法
 	__u16 sync;	/* Synch method, one of rio_transfer_sync enum */

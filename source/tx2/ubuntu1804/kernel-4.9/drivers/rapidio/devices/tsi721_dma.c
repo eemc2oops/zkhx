@@ -255,7 +255,7 @@ static int tsi721_bdma_ch_free(struct tsi721_bdma_chan *bdma_chan)
 	bdma_chan->sts_base = NULL;
 	return 0;
 }
-
+// tsi721_alloc_chan_resources -> tsi721_bdma_interrupt_enable
 static void
 tsi721_bdma_interrupt_enable(struct tsi721_bdma_chan *bdma_chan, int enable)
 {
@@ -382,7 +382,7 @@ tsi721_desc_fill_end(struct tsi721_dma_desc *bd_ptr, u32 bcount, bool interrupt)
 
 	return 0;
 }
-
+// tsi721_advance_work -> tsi721_dma_tx_err
 static void tsi721_dma_tx_err(struct tsi721_bdma_chan *bdma_chan,
 			      struct tsi721_tx_desc *desc)
 {
@@ -393,7 +393,7 @@ static void tsi721_dma_tx_err(struct tsi721_bdma_chan *bdma_chan,
 	list_move(&desc->desc_node, &bdma_chan->free_list);
 
 	if (callback)
-		callback(param);
+		callback(param);  // dma_faf_callback ( RIO_TRANSFER_FAF )         dma_xfer_callback ( 其它 )
 }
 // tsi721_dma_tasklet -> tsi721_clr_stat
 static void tsi721_clr_stat(struct tsi721_bdma_chan *bdma_chan)
@@ -543,7 +543,9 @@ entry_done:
 
 	return err;
 }
-// tsi721_dma_tasklet -> tsi721_advance_work
+// tsi721_dma_tasklet -> tsi721_advance_work    DMA 中断 延时处理流程
+// tsi721_tx_submit -> tsi721_advance_work     DMA Transfer 流程
+// tsi721_issue_pending -> tsi721_advance_work    DMA Transfer 流程
 static void tsi721_advance_work(struct tsi721_bdma_chan *bdma_chan,
 				struct tsi721_tx_desc *desc)
 {
@@ -705,7 +707,7 @@ err_out:
 	/* Re-Enable BDMA channel interrupts */
 	iowrite32(TSI721_DMAC_INT_ALL, bdma_chan->regs + TSI721_DMAC_INTE);
 }
-
+// dmaengine_submit -> tsi721_tx_submit
 static dma_cookie_t tsi721_tx_submit(struct dma_async_tx_descriptor *txd)
 {
 	struct tsi721_tx_desc *desc = to_tsi721_desc(txd);
@@ -827,7 +829,7 @@ enum dma_status tsi721_tx_status(struct dma_chan *dchan, dma_cookie_t cookie,
 	spin_unlock_bh(&bdma_chan->lock);
 	return status;
 }
-
+// dma_async_issue_pending -> tsi721_issue_pending
 static void tsi721_issue_pending(struct dma_chan *dchan)
 {
 	struct tsi721_bdma_chan *bdma_chan = to_tsi721_chan(dchan);

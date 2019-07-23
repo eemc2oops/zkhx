@@ -660,6 +660,7 @@ enum dma_dtype {
 	DTYPE6 = 6  /* Inbound Messaging Descriptor */
 };
 // tsi721_maint_dma
+// tsi721_prep_rio_sg
 enum dma_rtype {
 	NREAD = 0,
 	LAST_NWRITE_R = 1,
@@ -697,7 +698,7 @@ enum tsi721_smsg_int_flag {
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
 
 #define TSI721_BDMA_MAX_BCOUNT	(TSI721_DMAD_BCOUNT1 + 1)
-
+// tsi721_bdma_chan.tx_desc
 struct tsi721_tx_desc {
 	struct dma_async_tx_descriptor	txd;
 	u16				destid;
@@ -706,7 +707,10 @@ struct tsi721_tx_desc {
 	/* upper 2-bits of 66-bit RIO address */
 	u8				rio_addr_u;
 	enum dma_rtype			rtype;
-	struct list_head		desc_node;
+	struct list_head		desc_node;  // 挂到 tsi721_bdma_chan.free_list 队列里
+	                                    // tsi721_alloc_chan_resources  挂  free_list 队列
+	                                    // 从 tsi721_bdma_chan.free_list 里取出来以后 挂到           tsi721_bdma_chan.queue  队列里
+	                                    // tsi721_tx_submit 里挂   queue  队列
 	struct scatterlist		*sg;
 	unsigned int			sg_len;
 	enum dma_status			status;
@@ -717,24 +721,30 @@ struct tsi721_bdma_chan {
 	int		id;     // 0 ~ 7   和 tsi721_device.bdma[i] 里的i一致
 	void __iomem	*regs; // 指向 dma 操作的基地址 bar0 里面的地址 TSI721_DMAC_BASE  ( 0x51000 ) tsi721_register_dma 里注册
 	int		bd_num;		/* number of HW buffer descriptors */  // tsi721_bdma_ch_init 里赋值   
-	void		*bd_base;	/* start of DMA descriptors */    // VA  tsi721_bdma_ch_init 里申请 DMA 空间       结构    bd_num + 1 个   tsi721_dma_desc
+	                                                           // 值 128
+	void		*bd_base;	/* start of DMA descriptors */    // VA  tsi721_bdma_ch_init 里申请 DMA 空间       结构    bd_num + 1 (129) 个   tsi721_dma_desc
 	dma_addr_t	bd_phys;                                      //  PA 
 	void		*sts_base;	/* start of DMA BD status FIFO */   // VA  一共 sts_size 个 tsi721_dma_sts      tsi721_bdma_ch_init  里初始化
 	dma_addr_t	sts_phys;                                     // PA
-	int		sts_size;                                        //  状态个数 与 bd_num 相关
-	u32		sts_rdptr;
-	u32		wr_count;
-	u32		wr_count_next;
+	int		sts_size;                                        //  状态个数 与 bd_num 相关        2^N = 128    sts_size = 8
+	u32		sts_rdptr;                 // 初始化成0
+	u32		wr_count;                   // 初始化成0
+	u32		wr_count_next;     // 初始化成0
 
 	struct dma_chan		dchan;
-	struct tsi721_tx_desc	*tx_desc;
+	struct tsi721_tx_desc	*tx_desc;   // 16 个  tsi721_tx_desc 
+	                                    // tsi721_alloc_chan_resources 里申请地址
 	spinlock_t		lock;
 	struct tsi721_tx_desc	*active_tx;  // 初始化为 NULL
-	struct list_head	queue;
-	struct list_head	free_list;
+	struct list_head	queue;        // tsi721_tx_desc.desc_node 挂在这里
+	                                  //  tsi721_tx_submit 里挂树
+	                                  // tsi721_advance_work  从 queue 里取控制块 进行 DMA 发送
+	struct list_head	free_list;    // tsi721_tx_desc.desc_node 挂在这里
+	                                  //  tx_desc 指向的 16 个 tsi721_tx_desc 挂在这里
+	                                  // tsi721_alloc_chan_resources  挂树
 	struct tasklet_struct	tasklet;  // tsi721_register_dma 里初始化    成回调函数 tasklet.func = tsi721_dma_tasklet
 	bool			active;   // 初始化为 false 
-	                          //  tsi721_alloc_chan_resources 里置为 true
+	                          // tsi721_alloc_chan_resources 里置为 true
 };
 
 #endif /* CONFIG_RAPIDIO_DMA_ENGINE */
@@ -844,7 +854,7 @@ enum tsi721_msix_vect {
 	TSI721_VECT_IMB2_INT,
 	TSI721_VECT_IMB3_INT,
 #ifdef CONFIG_RAPIDIO_DMA_ENGINE
-	TSI721_VECT_DMA0_DONE,  // tsi721_bdma_ch_init  里挂中断
+	TSI721_VECT_DMA0_DONE,  // tsi721_bdma_ch_init  里挂中断      DMA 0 ~ 7
 	TSI721_VECT_DMA1_DONE,
 	TSI721_VECT_DMA2_DONE,
 	TSI721_VECT_DMA3_DONE,
@@ -852,7 +862,7 @@ enum tsi721_msix_vect {
 	TSI721_VECT_DMA5_DONE,
 	TSI721_VECT_DMA6_DONE,
 	TSI721_VECT_DMA7_DONE,
-	TSI721_VECT_DMA0_INT,   // tsi721_bdma_ch_init  里挂中断
+	TSI721_VECT_DMA0_INT,   // tsi721_bdma_ch_init  里挂中断      DMA  0 ~ 7
 	TSI721_VECT_DMA1_INT,
 	TSI721_VECT_DMA2_INT,
 	TSI721_VECT_DMA3_INT,

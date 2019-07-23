@@ -4,6 +4,7 @@
  * These definitions mirror those in pci.h, so they can be used
  * interchangeably with their PCI_ counterparts.
  */
+// rio_mport_transfer_ioctl 里使用
 enum dma_data_direction {
 	DMA_BIDIRECTIONAL = 0,
 	DMA_TO_DEVICE = 1,
