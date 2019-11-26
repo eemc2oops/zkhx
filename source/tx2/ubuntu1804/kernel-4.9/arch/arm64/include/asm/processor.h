@@ -48,10 +48,12 @@
  * TASK_SIZE - the maximum size of a user space task.
  * TASK_UNMAPPED_BASE - the lower boundary of the mmap VM area.
  */
-#ifdef CONFIG_COMPAT
+#ifdef CONFIG_COMPAT   // tx2 里定义了 CONFIG_COMPAT 
 #define TASK_SIZE_32		UL(0x100000000)
-#define TASK_SIZE		(test_thread_flag(TIF_32BIT) ? \
-				TASK_SIZE_32 : TASK_SIZE_64)
+#define TASK_SIZE		(test_thread_flag(TIF_32BIT) ? TASK_SIZE_32 : TASK_SIZE_64)　　/*进程空间大小 对于ARM64的用户空间进程而言，有两种，
+                                                                                        一种是运行在AArch64状态下，另外一种是运行在AArch32状态，
+                                                                                        因此，实际上代码中又定义了TASK_SIZE_32和TASK_SIZE_64两个宏定义。
+                                                                                       */
 #define TASK_SIZE_OF(tsk)	(test_tsk_thread_flag(tsk, TIF_32BIT) ? \
 				TASK_SIZE_32 : TASK_SIZE_64)
 #else

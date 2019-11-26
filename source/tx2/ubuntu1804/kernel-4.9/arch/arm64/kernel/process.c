@@ -418,11 +418,12 @@ void uao_thread_switch(struct task_struct *next)
  * This is *only* for exception entry from EL0, and is not valid until we
  * __switch_to() a user task.
  */
-DEFINE_PER_CPU(struct task_struct *, __entry_task);
+DEFINE_PER_CPU(struct task_struct *, __entry_task);       // arch/arm64/kernel/entry.s 里对 __entry_task 赋值
+                                                        // include/linux/percpu-defs.h 里定义了 DEFINE_PER_CPU 宏
 
 static void entry_task_switch(struct task_struct *next)
 {
-	__this_cpu_write(__entry_task, next);
+	__this_cpu_write(__entry_task, next); // cpu 变量__entry_task指向cpu上的当前任务
 }
 
 /*

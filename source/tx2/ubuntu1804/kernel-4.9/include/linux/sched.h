@@ -2814,7 +2814,7 @@ union thread_union {
 #ifndef CONFIG_THREAD_INFO_IN_TASK
 	struct thread_info thread_info;
 #endif
-	unsigned long stack[THREAD_SIZE/sizeof(long)];
+	unsigned long stack[THREAD_SIZE/sizeof(long)];  // 定义的栈大小
 };
 
 #ifndef __HAVE_ARCH_KSTACK_END

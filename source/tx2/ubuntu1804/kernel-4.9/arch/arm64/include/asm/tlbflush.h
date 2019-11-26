@@ -111,6 +111,32 @@ static inline void local_flush_tlb_all(void)
 	isb();
 }
 
+/*
+TLB的全称是Translation Lookaside Buffer，
+我们知道，处理器在取指或者执行访问memory指令的时候都需要进行地址翻译，即把虚拟地址翻译成物理地址。
+而地址翻译是一个漫长的过程，需要遍历几个level的Translation table，从而产生严重的开销。
+为了提高性能，我们会在MMU中增加一个TLB的单元，把地址翻译关系保存在这个高速缓存中，从而省略了对内存中页表的访问。
+
+当需要转换VA到PA的时候，首先在TLB中找是否有匹配的条目，如果有，那么我们称之TLB hit，这时候不需要再去访问页表来完成地址翻译。
+不过TLB始终是全部页表的一个子集，因此也有可能在TLB中找不到。
+如果没有在TLB中找到对应的item，那么称之TLB miss，那么就需要去访问memory中的page table来完成地址翻译，同时将翻译结果放入TLB，
+如果TLB已经满了，那么还要设计替换算法来决定让哪一个TLB entry失效，从而加载新的页表项
+
+这个接口用来invalidate TLB cache中的所有的条目。
+执行完毕了该接口之后，由于TLB cache中没有缓存任何的VA到PA的转换信息，
+因此，调用该接口API之前的所有的对page table的修改都可以被CPU感知到。注：该接口是大杀器，不要随便使用。
+对于ARM64，flush_tlb_all接口使用的底层命令是：tlbi vmalle1is。
+Tlbi是TLB Invalidate指令，
+vmalle1is是参数，指明要invalidate那些TLB。
+  vm表示本次invalidate操作对象是当前VMID，
+  all表示要invalidate所有的TLB entry，
+  e1是表示要flush的TLB entry的memory space identifier是EL0和EL1，regime stage 1的TLB entry。
+  is是inner shareable的意思，表示要invalidate所有inner shareable内的所有PEs的TLB。
+  如果没有is，则表示要flush的是local TLB，其他processor core的TLB则不受影响。
+flush_tlb_all接口有一个变种：local_flush_tlb_all。
+flush_tlb_all是invalidate系统中所有的TLB（各个PEs上的TLB），
+而local_flush_tlb_all仅仅是invalidate本CPU core上的TLB。local_flush_tlb_all对应的底层接口是：tlbi vmalle1，没有is参数。
+*/
 static inline void flush_tlb_all(void)
 {
 	__DSB_FOR_TLBI(st);

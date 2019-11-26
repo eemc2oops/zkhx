@@ -64,7 +64,8 @@
 #include <asm/xen/hypervisor.h>
 #include <asm/mmu_context.h>
 
-phys_addr_t __fdt_pointer __initdata;
+phys_addr_t __fdt_pointer __initdata;   // __fdt_pointer 的值在 arch/arm64/kernel/head.s 函数 __primary_switched 里赋值
+                                        // 表示dtb的基地址
 
 /*
  * Standard memory resources
@@ -90,7 +91,10 @@ static struct resource mem_res[] = {
 /*
  * The recorded values of x0 .. x3 upon kernel entry.
  */
-u64 __cacheline_aligned boot_args[4];
+u64 __cacheline_aligned boot_args[4];   // arch/arm64/kernel/head.s    preserve_boot_args 函数里赋值，保存当时x0,x1,x2,x3的值到数组里
+                                        // 为何要保存x0～x3这四个寄存器呢？因为ARM64 boot protocol对启动时候的x0～x3这四个寄存器有严格的限制：
+                                        // x0是dtb的物理地址，x1～x3必须是0（非零值是保留将来使用）。
+                                        // 在后续 setup_arch 函数执行的时候会访问 boot_args 并进行校验。
 
 void __init smp_setup_processor_id(void)
 {
@@ -102,7 +106,7 @@ void __init smp_setup_processor_id(void)
 	 * using percpu variable early, for example, lockdep will
 	 * access percpu variable inside lock_release
 	 */
-	set_my_cpu_offset(0);
+	set_my_cpu_offset(0);  //设置当前cpu的编号，后续访问cpu变量时使用
 	pr_info("Booting Linux on physical CPU 0x%lx\n", (unsigned long)mpidr);
 }
 

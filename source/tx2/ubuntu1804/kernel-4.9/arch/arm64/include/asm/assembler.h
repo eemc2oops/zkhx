@@ -61,7 +61,8 @@
 	.macro	enable_dbg
 	msr	daifclr, #8
 	.endm
-
+	
+    // arch/arm64/kernel/entry.s kernel_entry -> disable_step_tsk
 	.macro	disable_step_tsk, flgs, tmp
 	tbz	\flgs, #TIF_SINGLESTEP, 9990f
 	mrs	\tmp, mdscr_el1
@@ -154,7 +155,7 @@ lr	.req	x30		// link register
 /*
  * Select code when configured for BE.
  */
-#ifdef CONFIG_CPU_BIG_ENDIAN
+#ifdef CONFIG_CPU_BIG_ENDIAN  // tx2 没有定义 CONFIG_CPU_BIG_ENDIAN
 #define CPU_BE(code...) code
 #else
 #define CPU_BE(code...)
@@ -163,10 +164,10 @@ lr	.req	x30		// link register
 /*
  * Select code when configured for LE.
  */
-#ifdef CONFIG_CPU_BIG_ENDIAN
+#ifdef CONFIG_CPU_BIG_ENDIAN // tx2 没有定义 CONFIG_CPU_BIG_ENDIAN
 #define CPU_LE(code...)
 #else
-#define CPU_LE(code...) code
+#define CPU_LE(code...) code  // tx2 分支  arch/arm64/kernel/head.s 里使用
 #endif
 
 /*
@@ -268,14 +269,15 @@ alternative_endif
 	 * @sym: The name of the per-cpu variable
 	 * @tmp: scratch register
 	 */
+	 //  arch/arm64/kernel/entry.s  kernel_entry -> ldr_this_cpu
 	.macro ldr_this_cpu dst, sym, tmp
-	adr_l	\dst, \sym
+	adr_l	\dst, \sym      // dst保存cpu变量sym的偏移
 alternative_if_not ARM64_HAS_VIRT_HOST_EXTN
-	mrs	\tmp, tpidr_el1
+	mrs	\tmp, tpidr_el1    // tmp = tpidr_el1      tpidr_el1表示当前CPU变量的起始地址　cpu变量的内存分布详见 set_my_cpu_offset 函数定义
 alternative_else
 	mrs	\tmp, tpidr_el2
 alternative_endif
-	ldr	\dst, [\dst, \tmp]
+	ldr	\dst, [\dst, \tmp]   // dst = [dst + tmp]  取到当前CPU上的对应变量值
 	.endm
 
 /*
@@ -351,8 +353,9 @@ alternative_endif
 /*
  * tcr_set_idmap_t0sz - update TCR.T0SZ so that we can load the ID map
  */
+// __cpu_setup -> tcr_set_idmap_t0sz              arch/arm64/mm/proc.s
 	.macro	tcr_set_idmap_t0sz, valreg, tmpreg
-#ifndef CONFIG_ARM64_VA_BITS_48
+#ifndef CONFIG_ARM64_VA_BITS_48    // tx2 没有定义 CONFIG_ARM64_VA_BITS_48 这个宏
 	ldr_l	\tmpreg, idmap_t0sz
 	bfi	\valreg, \tmpreg, #TCR_T0SZ_OFFSET, #TCR_TxSZ_WIDTH
 #endif

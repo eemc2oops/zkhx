@@ -29,7 +29,7 @@
 #define THREAD_SIZE_ORDER	0
 #endif
 
-#define THREAD_SIZE		16384
+#define THREAD_SIZE		16384    // 0x4000  16K
 #define THREAD_START_SP		(THREAD_SIZE - 16)
 
 #ifndef __ASSEMBLY__
@@ -46,6 +46,8 @@ typedef unsigned long mm_segment_t;
  */
 struct thread_info {
 	unsigned long		flags;		/* low level flags */
+	                            //   arch/arm64/kernel/entry.s 里的 kernel_entry 在中断调用时，会通过 disable_step_tsk 设置该值
+	                            //   TIF_SINGLESTEP		21   中断调用时　disable_step_tsk 里会清这个标志位
 	mm_segment_t		addr_limit;	/* address limit */
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN
 	u64			ttbr0;		/* saved TTBR0_EL1 */
@@ -81,6 +83,7 @@ struct thread_info {
  *  TIF_NOTIFY_RESUME	- callback before returning to user
  *  TIF_USEDFPU		- FPU was used by this task this quantum (SMP)
  */
+// thread_info.flags 的位域
 #define TIF_SIGPENDING		0
 #define TIF_NEED_RESCHED	1
 #define TIF_NOTIFY_RESUME	2	/* callback before returning to user */
@@ -93,7 +96,7 @@ struct thread_info {
 #define TIF_MEMDIE		18	/* is terminating due to OOM killer */
 #define TIF_FREEZE		19
 #define TIF_RESTORE_SIGMASK	20
-#define TIF_SINGLESTEP		21
+#define TIF_SINGLESTEP		21  //  中断调用时　disable_step_tsk 里会清这个标志位
 #define TIF_32BIT		22	/* 32bit process */
 #define TIF_SSBD		23	/* Wants SSB mitigation */
 #define TIF_DEPRECATED_WARN	31

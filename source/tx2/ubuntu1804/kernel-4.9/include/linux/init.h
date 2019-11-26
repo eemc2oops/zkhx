@@ -91,7 +91,9 @@
 #define __memexitconst   __section(.memexit.rodata)
 
 /* For assembly routines */
-#define __HEAD		.section	".head.text","ax"
+#define __HEAD		.section	".head.text","ax"   // 定义了 .head.text 段  
+                                                    // 在 arch/arm64/kernel/head.s 里使用了 __HEAD 宏
+                                                    // .head.text 段在 arch/arm64/kernel/vmlinux.lds.s 里定义成kernel的入口段
 #define __INIT		.section	".init.text","ax"
 #define __FINIT		.previous
 

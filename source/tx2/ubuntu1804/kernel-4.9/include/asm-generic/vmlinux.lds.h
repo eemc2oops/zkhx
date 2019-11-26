@@ -517,7 +517,9 @@
 		VMLINUX_SYMBOL(__softirqentry_text_end) = .;
 
 /* Section used for early init (in .S files) */
-#define HEAD_TEXT  KEEP(*(.head.text))
+#define HEAD_TEXT  KEEP(*(.head.text))    // HEAD_TEXT 用在 arch/arm64/kernel/vmlinux.lds.s 里，表示了kernel的入口
+                                          // 在 arch/arm64/kernel/head.s 里，使用了     __HEAD 宏定义段
+                                          // #define __HEAD .section ".head.text","ax"   在 include/linux/init.h 里定义
 
 #define HEAD_TEXT_SECTION							\
 	.head.text : AT(ADDR(.head.text) - LOAD_OFFSET) {		\

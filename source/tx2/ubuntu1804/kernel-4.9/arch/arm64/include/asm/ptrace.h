@@ -22,8 +22,8 @@
 #include <uapi/asm/ptrace.h>
 
 /* Current Exception Level values, as contained in CurrentEL */
-#define CurrentEL_EL1		(1 << 2)
-#define CurrentEL_EL2		(2 << 2)
+#define CurrentEL_EL1		(1 << 2)   // 0b0100  el1
+#define CurrentEL_EL2		(2 << 2)   // arch/arm64/kernel/head.s 里判断  0b1000     el2
 
 /* AArch32-specific ptrace requests */
 #define COMPAT_PTRACE_GETREGS		12
@@ -105,18 +105,21 @@
  * exception. Note that sizeof(struct pt_regs) has to be a multiple of 16 (for
  * stack alignment). struct user_pt_regs must form a prefix of struct pt_regs.
  */
+// 进入异常时，用来保存上下文寄存器的结构 kernel_entry 里给本结构赋值
 struct pt_regs {
 	union {
 		struct user_pt_regs user_regs;
 		struct {
 			u64 regs[31];
-			u64 sp;
-			u64 pc;
-			u64 pstate;
+			u64 sp;   // 进入异常时，栈指针的位置
+			          // 如果是从 el0 进入异常，则 sp = sp_el0
+			          // 如果是从 el1 进入异常，则 sp 指向进入异常时 sp_el1                　的值，也即本结构的首地址
+			u64 pc;   // elr_el1
+			u64 pstate;  // spsr_el1
 		};
 	};
 	u64 orig_x0;
-	u64 syscallno;
+	u64 syscallno;   // 如果是从el0进入异常，赋值为 -1
 	u64 orig_addr_limit;
 	u64 unused;	// maintain 16 byte alignment
 };

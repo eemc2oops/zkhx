@@ -1,6 +1,8 @@
 #ifndef _4LEVEL_FIXUP_H
 #define _4LEVEL_FIXUP_H
 
+// tx2  没有使用这个文件
+
 #define __ARCH_HAS_4LEVEL_HACK
 #define __PAGETABLE_PUD_FOLDED
 

@@ -477,7 +477,7 @@ static void __init mm_init(void)
 	ioremap_huge_init();
 	kaiser_init();
 }
-
+// arch/arm64/kernel/head.s __primary_switched -> start_kernel
 asmlinkage __visible void __init start_kernel(void)
 {
 	char *command_line;

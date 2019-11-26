@@ -115,6 +115,7 @@
  * Variant on the per-CPU variable declaration/definition theme used for
  * ordinary per-CPU variables.
  */
+// cpu变量的内存结构参见 set_my_cpu_offset 
 #define DECLARE_PER_CPU(type, name)					\
 	DECLARE_PER_CPU_SECTION(type, name, "")
 

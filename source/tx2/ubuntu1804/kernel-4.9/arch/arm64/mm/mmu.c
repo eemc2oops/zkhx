@@ -47,9 +47,12 @@
 #include <asm/memblock.h>
 #include <asm/mmu_context.h>
 
-u64 idmap_t0sz = TCR_T0SZ(VA_BITS);
+u64 idmap_t0sz = TCR_T0SZ(VA_BITS);   // idmap_t0sz 值在 __create_page_tables 里赋值   arch/arm64/kernel/head.s
+                                      // tx2 : __create_page_tables　函数里 把地址 __idmap_text_end 存到 idmap_t0sz 里
+                                      // 系统启动阶段，打开mmu前。
+                                     // 由宏 cpu_set_idmap_tcr_t0sz 调用 idmap_t0sz 
 
-u64 kimage_voffset __ro_after_init;
+u64 kimage_voffset __ro_after_init;  // arch/arm64/kernel/head.s 里   __primary_switched 里赋值
 EXPORT_SYMBOL(kimage_voffset);
 
 /*

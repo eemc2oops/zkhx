@@ -19,7 +19,7 @@
 #define __ASM_ESR_H
 
 #include <asm/memory.h>
-
+// arch/arm64/kernel/entry.s 的函数  el0_sync 里使用
 #define ESR_ELx_EC_UNKNOWN	(0x00)
 #define ESR_ELx_EC_WFx		(0x01)
 /* Unallocated EC: 0x02 */

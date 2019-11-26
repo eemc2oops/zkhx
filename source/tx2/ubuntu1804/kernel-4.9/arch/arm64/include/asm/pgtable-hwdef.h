@@ -49,16 +49,16 @@
  */
 #define ARM64_HW_PGTABLE_LEVEL_SHIFT(n)	((PAGE_SHIFT - 3) * (4 - (n)) + 3)
 
-#define PTRS_PER_PTE		(1 << (PAGE_SHIFT - 3))
+#define PTRS_PER_PTE		(1 << (PAGE_SHIFT - 3))  // tx2 : 0x200   512
 
 /*
  * PMD_SHIFT determines the size a level 2 page table entry can map.
  */
-#if CONFIG_PGTABLE_LEVELS > 2
-#define PMD_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(2)
-#define PMD_SIZE		(_AC(1, UL) << PMD_SHIFT)
-#define PMD_MASK		(~(PMD_SIZE-1))
-#define PTRS_PER_PMD		PTRS_PER_PTE
+#if CONFIG_PGTABLE_LEVELS > 2    // tx2 : CONFIG_PGTABLE_LEVELS = 3
+#define PMD_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(2)   // tx2 : 0x15
+#define PMD_SIZE		(_AC(1, UL) << PMD_SHIFT)  // tx2 : 0x200000  2M
+#define PMD_MASK		(~(PMD_SIZE-1))  // tx2 : 0xffffffffffe00000
+#define PTRS_PER_PMD		PTRS_PER_PTE  // tx2 : 0x200   512
 #endif
 
 /*
@@ -75,38 +75,38 @@
  * PGDIR_SHIFT determines the size a top-level page table entry can map
  * (depending on the configuration, this level can be 0, 1 or 2).
  */
-#define PGDIR_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(4 - CONFIG_PGTABLE_LEVELS)
-#define PGDIR_SIZE		(_AC(1, UL) << PGDIR_SHIFT)
-#define PGDIR_MASK		(~(PGDIR_SIZE-1))
-#define PTRS_PER_PGD		(1 << (VA_BITS - PGDIR_SHIFT))
+#define PGDIR_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(4 - CONFIG_PGTABLE_LEVELS)   // tx2 : 0x1e  30
+#define PGDIR_SIZE		(_AC(1, UL) << PGDIR_SHIFT)   // tx2 : 0x40000000   1G
+#define PGDIR_MASK		(~(PGDIR_SIZE-1))     // tx2 : 0xffffffffc0000000
+#define PTRS_PER_PGD		(1 << (VA_BITS - PGDIR_SHIFT))  // tx2 : 0x200  512
 
 /*
  * Section address mask and size definitions.
  */
-#define SECTION_SHIFT		PMD_SHIFT
-#define SECTION_SIZE		(_AC(1, UL) << SECTION_SHIFT)
-#define SECTION_MASK		(~(SECTION_SIZE-1))
+#define SECTION_SHIFT		PMD_SHIFT  // tx2 : 0x15   21
+#define SECTION_SIZE		(_AC(1, UL) << SECTION_SHIFT)  // tx2 : 0x200000  2M
+#define SECTION_MASK		(~(SECTION_SIZE-1))  // tx2 : 0xffffffffffe00000
 
 /*
  * Contiguous page definitions.
  */
-#ifdef CONFIG_ARM64_64K_PAGES
+#ifdef CONFIG_ARM64_64K_PAGES  // tx2 没有定义这个宏
 #define CONT_PTE_SHIFT		5
 #define CONT_PMD_SHIFT		5
-#elif defined(CONFIG_ARM64_16K_PAGES)
+#elif defined(CONFIG_ARM64_16K_PAGES)  // tx2 没有定义这个宏
 #define CONT_PTE_SHIFT		7
 #define CONT_PMD_SHIFT		5
 #else
-#define CONT_PTE_SHIFT		4
-#define CONT_PMD_SHIFT		4
+#define CONT_PTE_SHIFT		4    // tx2
+#define CONT_PMD_SHIFT		4    // tx2
 #endif
 
-#define CONT_PTES		(1 << CONT_PTE_SHIFT)
-#define CONT_PTE_SIZE		(CONT_PTES * PAGE_SIZE)
-#define CONT_PTE_MASK		(~(CONT_PTE_SIZE - 1))
-#define CONT_PMDS		(1 << CONT_PMD_SHIFT)
-#define CONT_PMD_SIZE		(CONT_PMDS * PMD_SIZE)
-#define CONT_PMD_MASK		(~(CONT_PMD_SIZE - 1))
+#define CONT_PTES		(1 << CONT_PTE_SHIFT)  // tx2 : 0x10  16
+#define CONT_PTE_SIZE		(CONT_PTES * PAGE_SIZE)  // tx2 : 0x10000   64K
+#define CONT_PTE_MASK		(~(CONT_PTE_SIZE - 1)) // tx2 : 0xffffffffffff0000
+#define CONT_PMDS		(1 << CONT_PMD_SHIFT)  // tx2 : 0x10   16
+#define CONT_PMD_SIZE		(CONT_PMDS * PMD_SIZE)  // tx2 : 0x2000000  32M
+#define CONT_PMD_MASK		(~(CONT_PMD_SIZE - 1))  // tx2 : 0xfffffffffe000000
 /* the the numerical offset of the PTE within a range of CONT_PTES */
 #define CONT_RANGE_OFFSET(addr) (((addr)>>PAGE_SHIFT)&(CONT_PTES-1))
 
@@ -115,32 +115,33 @@
  *
  * Level 1 descriptor (PUD).
  */
-#define PUD_TYPE_TABLE		(_AT(pudval_t, 3) << 0)
-#define PUD_TABLE_BIT		(_AT(pgdval_t, 1) << 1)
-#define PUD_TYPE_MASK		(_AT(pgdval_t, 3) << 0)
-#define PUD_TYPE_SECT		(_AT(pgdval_t, 1) << 0)
+#define PUD_TYPE_TABLE		(_AT(pudval_t, 3) << 0)   // tx2 : 3
+#define PUD_TABLE_BIT		(_AT(pgdval_t, 1) << 1)   // tx2 : 2
+#define PUD_TYPE_MASK		(_AT(pgdval_t, 3) << 0)   // tx2 : 3
+#define PUD_TYPE_SECT		(_AT(pgdval_t, 1) << 0)   // tx2 : 1
 
 /*
  * Level 2 descriptor (PMD).
  */
-#define PMD_TYPE_MASK		(_AT(pmdval_t, 3) << 0)
-#define PMD_TYPE_FAULT		(_AT(pmdval_t, 0) << 0)
-#define PMD_TYPE_TABLE		(_AT(pmdval_t, 3) << 0)
-#define PMD_TYPE_SECT		(_AT(pmdval_t, 1) << 0)
-#define PMD_TABLE_BIT		(_AT(pmdval_t, 1) << 1)
+#define PMD_TYPE_MASK		(_AT(pmdval_t, 3) << 0)  // tx2 : 3
+#define PMD_TYPE_FAULT		(_AT(pmdval_t, 0) << 0)  // tx2 : 0
+#define PMD_TYPE_TABLE		(_AT(pmdval_t, 3) << 0)  // create_table_entry 里配置页表  /arch/arm64/kernel/head.s
+                                                     // tx2 : 3
+#define PMD_TYPE_SECT		(_AT(pmdval_t, 1) << 0)  // tx2 : 1
+#define PMD_TABLE_BIT		(_AT(pmdval_t, 1) << 1)  // tx2 : 2
 
 /*
  * Section
  */
-#define PMD_SECT_VALID		(_AT(pmdval_t, 1) << 0)
-#define PMD_SECT_USER		(_AT(pmdval_t, 1) << 6)		/* AP[1] */
-#define PMD_SECT_RDONLY		(_AT(pmdval_t, 1) << 7)		/* AP[2] */
-#define PMD_SECT_S		(_AT(pmdval_t, 3) << 8)
-#define PMD_SECT_AF		(_AT(pmdval_t, 1) << 10)
-#define PMD_SECT_NG		(_AT(pmdval_t, 1) << 11)
-#define PMD_SECT_CONT		(_AT(pmdval_t, 1) << 52)
-#define PMD_SECT_PXN		(_AT(pmdval_t, 1) << 53)
-#define PMD_SECT_UXN		(_AT(pmdval_t, 1) << 54)
+#define PMD_SECT_VALID		(_AT(pmdval_t, 1) << 0)   // tx2 : 1
+#define PMD_SECT_USER		(_AT(pmdval_t, 1) << 6)		/* AP[1] */  //  tx2 : 0x40     64
+#define PMD_SECT_RDONLY		(_AT(pmdval_t, 1) << 7)		/* AP[2] */  //  tx2 : 0x80     128
+#define PMD_SECT_S		(_AT(pmdval_t, 3) << 8)                     // tx2 : 0x300      768
+#define PMD_SECT_AF		(_AT(pmdval_t, 1) << 10)        // tx2 : 0x400      1024
+#define PMD_SECT_NG		(_AT(pmdval_t, 1) << 11)        // tx2 : 0x800      2048
+#define PMD_SECT_CONT		(_AT(pmdval_t, 1) << 52)   // tx2 : 0x0010000000000000
+#define PMD_SECT_PXN		(_AT(pmdval_t, 1) << 53)   // tx2 : 0x0020000000000000
+#define PMD_SECT_UXN		(_AT(pmdval_t, 1) << 54)  // tx2 : 0x0040000000000000
 
 /*
  * AttrIndx[2:0] encoding (mapping attributes defined in the MAIR* registers).
@@ -151,47 +152,47 @@
 /*
  * Level 3 descriptor (PTE).
  */
-#define PTE_TYPE_MASK		(_AT(pteval_t, 3) << 0)
-#define PTE_TYPE_FAULT		(_AT(pteval_t, 0) << 0)
-#define PTE_TYPE_PAGE		(_AT(pteval_t, 3) << 0)
-#define PTE_TABLE_BIT		(_AT(pteval_t, 1) << 1)
-#define PTE_USER		(_AT(pteval_t, 1) << 6)		/* AP[1] */
-#define PTE_RDONLY		(_AT(pteval_t, 1) << 7)		/* AP[2] */
-#define PTE_SHARED		(_AT(pteval_t, 3) << 8)		/* SH[1:0], inner shareable */
-#define PTE_AF			(_AT(pteval_t, 1) << 10)	/* Access Flag */
-#define PTE_NG			(_AT(pteval_t, 1) << 11)	/* nG */
-#define PTE_DBM			(_AT(pteval_t, 1) << 51)	/* Dirty Bit Management */
-#define PTE_CONT		(_AT(pteval_t, 1) << 52)	/* Contiguous range */
-#define PTE_PXN			(_AT(pteval_t, 1) << 53)	/* Privileged XN */
-#define PTE_UXN			(_AT(pteval_t, 1) << 54)	/* User XN */
-#define PTE_HYP_XN		(_AT(pteval_t, 1) << 54)	/* HYP XN */
+#define PTE_TYPE_MASK		(_AT(pteval_t, 3) << 0)    // tx2 : 0x3
+#define PTE_TYPE_FAULT		(_AT(pteval_t, 0) << 0)    // tx2 : 0
+#define PTE_TYPE_PAGE		(_AT(pteval_t, 3) << 0)   // tx2 : 0x3
+#define PTE_TABLE_BIT		(_AT(pteval_t, 1) << 1)   // tx2 : 0x2
+#define PTE_USER		(_AT(pteval_t, 1) << 6)		/* AP[1] */   // tx2 : 0x40
+#define PTE_RDONLY		(_AT(pteval_t, 1) << 7)		/* AP[2] */    // tx2 : 0x80
+#define PTE_SHARED		(_AT(pteval_t, 3) << 8)		/* SH[1:0], inner shareable */   // tx2 : 0x300
+#define PTE_AF			(_AT(pteval_t, 1) << 10)	/* Access Flag */   // tx2 : 0x400
+#define PTE_NG			(_AT(pteval_t, 1) << 11)	/* nG */      // tx2 : 0x800
+#define PTE_DBM			(_AT(pteval_t, 1) << 51)	/* Dirty Bit Management */  // tx2 : 0x0008000000000000
+#define PTE_CONT		(_AT(pteval_t, 1) << 52)	/* Contiguous range */   // tx2 : 0x0010000000000000
+#define PTE_PXN			(_AT(pteval_t, 1) << 53)	/* Privileged XN */  // tx2 : 0x0020000000000000
+#define PTE_UXN			(_AT(pteval_t, 1) << 54)	/* User XN */  // tx2 : 0x0040000000000000
+#define PTE_HYP_XN		(_AT(pteval_t, 1) << 54)	/* HYP XN */  // tx2 : 0x0040000000000000
 
 /*
  * AttrIndx[2:0] encoding (mapping attributes defined in the MAIR* registers).
  */
 #define PTE_ATTRINDX(t)		(_AT(pteval_t, (t)) << 2)
-#define PTE_ATTRINDX_MASK	(_AT(pteval_t, 7) << 2)
+#define PTE_ATTRINDX_MASK	(_AT(pteval_t, 7) << 2)    // tx2 : 0x1c
 
 /*
  * 2nd stage PTE definitions
  */
-#define PTE_S2_RDONLY		(_AT(pteval_t, 1) << 6)   /* HAP[2:1] */
-#define PTE_S2_RDWR		(_AT(pteval_t, 3) << 6)   /* HAP[2:1] */
+#define PTE_S2_RDONLY		(_AT(pteval_t, 1) << 6)   /* HAP[2:1] */   // tx2 : 0x40   64
+#define PTE_S2_RDWR		(_AT(pteval_t, 3) << 6)   /* HAP[2:1] */     // tx2 : 0xc0    192
 
-#define PMD_S2_RDONLY		(_AT(pmdval_t, 1) << 6)   /* HAP[2:1] */
-#define PMD_S2_RDWR		(_AT(pmdval_t, 3) << 6)   /* HAP[2:1] */
+#define PMD_S2_RDONLY		(_AT(pmdval_t, 1) << 6)   /* HAP[2:1] */  // tx2 : 0x40    64
+#define PMD_S2_RDWR		(_AT(pmdval_t, 3) << 6)   /* HAP[2:1] */   // tx2 : 0xc0  192
 
 /*
  * Memory Attribute override for Stage-2 (MemAttr[3:0])
  */
 #define PTE_S2_MEMATTR(t)	(_AT(pteval_t, (t)) << 2)
-#define PTE_S2_MEMATTR_MASK	(_AT(pteval_t, 0xf) << 2)
+#define PTE_S2_MEMATTR_MASK	(_AT(pteval_t, 0xf) << 2)   // tx2 : 0x3c
 
 /*
  * EL2/HYP PTE/PMD definitions
  */
-#define PMD_HYP			PMD_SECT_USER
-#define PTE_HYP			PTE_USER
+#define PMD_HYP			PMD_SECT_USER    // tx2 : 0x40  64
+#define PTE_HYP			PTE_USER         // tx2 : 0x40  64
 
 /*
  * Highest possible physical address supported.

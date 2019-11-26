@@ -19,8 +19,35 @@
 #include <asm/stack_pointer.h>
 #include <asm/alternative.h>
 
+/*
++----------------------------------+
+|  cpu0  |         var0            |
+|        |         var1            |
+|        |         ...             |
+|        |         varX            |
++----------------------------------+
+|  cpu1  |         var0            |
+|        |         var1            |
+|        |         ...             |
+|        |         varX            |
++----------------------------------+
+|  cpu2  |         var0            |
+|        |         var1            |
+|        |         ...             |
+|        |         varX            |
++----------------------------------+
+|  cpu3  |         var0            |
+|        |         var1            |
+|        |         ...             |
+|        |         varX            |
++----------------------------------+
+*/
+// smp_setup_processor_id -> set_my_cpu_offset
+// secondary_start_kernel -> set_my_cpu_offset   保存cpu变量的起始地址
+// smp_prepare_boot_cpu -> set_my_cpu_offset
 static inline void set_my_cpu_offset(unsigned long off)
 {
+    // tpidr_el1 里保存 cpu 变量的起始地址，tpidr_el1在访问cpu变量时使用
 	asm volatile(ALTERNATIVE("msr tpidr_el1, %0",
 				 "msr tpidr_el2, %0",
 				 ARM64_HAS_VIRT_HOST_EXTN)

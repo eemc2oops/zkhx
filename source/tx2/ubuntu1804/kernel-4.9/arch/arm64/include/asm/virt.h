@@ -39,7 +39,7 @@
  */
 #define HVC_SOFT_RESTART 2
 
-#define BOOT_CPU_MODE_EL1	(0xe11)
+#define BOOT_CPU_MODE_EL1	(0xe11)  // __boot_cpu_mode 里的值
 #define BOOT_CPU_MODE_EL2	(0xe12)
 
 #ifndef __ASSEMBLY__
@@ -57,7 +57,9 @@
  * Should the bootloader fail to do this, the two values will be different.
  * This allows the kernel to flag an error when the secondaries have come up.
  */
-extern u32 __boot_cpu_mode[2];
+extern u32 __boot_cpu_mode[2];  // set_cpu_boot_mode_flag 里给这个变量赋值
+                                // 变量在 arch/arm64/kernel/head.s 里定义
+                                // 赋值后，数组里的两个值要么同为 BOOT_CPU_MODE_EL2，要么同为 BOOT_CPU_MODE_EL1
 
 void __hyp_set_vectors(phys_addr_t phys_vector_base);
 phys_addr_t __hyp_get_vectors(void);

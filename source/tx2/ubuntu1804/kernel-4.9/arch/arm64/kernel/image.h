@@ -40,7 +40,7 @@
 	 (((data) & 0x00ff0000) >> 8)  |	\
 	 (((data) & 0xff000000) >> 24))
 #else
-#define DATA_LE32(data) ((data) & 0xffffffff)
+#define DATA_LE32(data) ((data) & 0xffffffff)    // tx2
 #endif
 
 #define DEFINE_IMAGE_LE64(sym, data)				\
@@ -50,7 +50,7 @@
 #ifdef CONFIG_CPU_BIG_ENDIAN
 #define __HEAD_FLAG_BE		1
 #else
-#define __HEAD_FLAG_BE		0
+#define __HEAD_FLAG_BE		0            // tx2
 #endif
 
 #define __HEAD_FLAG_PAGE_SIZE	((PAGE_SHIFT - 10) / 2)
@@ -66,10 +66,21 @@
  * regardless of the endianness of the kernel. While constant values could be
  * endian swapped in head.S, all are done here for consistency.
  */
+ // 用在 vmlinux.lds.S 里，生成
 #define HEAD_SYMBOLS						\
 	DEFINE_IMAGE_LE64(_kernel_size_le, _end - _text);	\
 	DEFINE_IMAGE_LE64(_kernel_offset_le, TEXT_OFFSET);	\
 	DEFINE_IMAGE_LE64(_kernel_flags_le, __HEAD_FLAGS);
+
+/*定义方便看代码跳转 begin*/
+// uint32 是自己加的，方便代码查找
+uint32 _kernel_size_le_lo32 = ( _end - _text ) & 0xffffffff
+uint32 _kernel_size_le_hi32 = ( ( _end - _text ) >> 32 ) & 0xffffffff
+uint32 _kernel_offset_le_lo32 = TEXT_OFFSET & 0xffffffff        // tx2 : 0x80000      (((0x00080000) & 0xffffffff) & 0xffffffff)
+uint32 _kernel_offset_le_hi32 = ( TEXT_OFFSET >> 32 ) & 0xffffffff    // tx2 : 0      (((0x00080000) >> 32) & 0xffffffff)
+uint32 _kernel_flags_le_lo32 = __HEAD_FLAGS & 0xffffffff // tx2 : 0xa                 (((((0 << 0) | (((12 - 10) / 2) << 1) | (1 << 3))) & 0xffffffff) & 0xffffffff)
+uint32 _kernel_flags_le_hi32 = ( __HEAD_FLAGS >> 32 ) & 0xffffffff // tx2 : 0         (((((0 << 0) | (((12 - 10) / 2) << 1) | (1 << 3))) >> 32) & 0xffffffff)
+/*定义方便看代码跳转 end*/
 
 #ifdef CONFIG_EFI
 

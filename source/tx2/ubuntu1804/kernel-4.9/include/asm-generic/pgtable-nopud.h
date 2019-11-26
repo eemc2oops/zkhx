@@ -1,9 +1,11 @@
 #ifndef _PGTABLE_NOPUD_H
 #define _PGTABLE_NOPUD_H
 
+// tx2 使用了这个文件
+
 #ifndef __ASSEMBLY__
 
-#define __PAGETABLE_PUD_FOLDED
+#define __PAGETABLE_PUD_FOLDED  
 
 /*
  * Having the pud type consist of a pgd gets the size right, and allows
@@ -12,7 +14,7 @@
  */
 typedef struct { pgd_t pgd; } pud_t;
 
-#define PUD_SHIFT	PGDIR_SHIFT
+#define PUD_SHIFT	PGDIR_SHIFT   // tx2 : 0x1e
 #define PTRS_PER_PUD	1
 #define PUD_SIZE  	(1UL << PUD_SHIFT)
 #define PUD_MASK  	(~(PUD_SIZE-1))

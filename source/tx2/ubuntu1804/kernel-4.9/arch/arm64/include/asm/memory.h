@@ -61,14 +61,88 @@
  * VA_BITS - the maximum number of bits for virtual addresses.
  * VA_START - the first kernel virtual address.
  */
-#define VA_BITS			(CONFIG_ARM64_VA_BITS)
-#define VA_START		(UL(0xffffffffffffffff) - \
-	(UL(1) << VA_BITS) + 1)
-#define PAGE_OFFSET		(UL(0xffffffffffffffff) - \
-	(UL(1) << (VA_BITS - 1)) + 1)
-#define KIMAGE_VADDR		(MODULES_END)
-#define MODULES_END		(MODULES_VADDR + MODULES_VSIZE)
-#define MODULES_VADDR		(VA_START + KASAN_SHADOW_SIZE)
+
+/*
+48 bit ,4k page, 采用4级映射
+Translation table lookup with 4KB pages:
++--------+--------+--------+--------+--------+--------+--------+--------+
+|63    56|55    48|47    40|39    32|31    24|23    16|15     8|7      0|
++--------+--------+--------+--------+--------+--------+--------+--------+
+|                 |         |         |         |         |
+|                 |         |         |         |         v
+|                 |         |         |         |   [11:0]  in-page offset
+ 
+|                 |         |         |         +-> [20:12] L3 index
+ 
+|                 |         |         +-----------> [29:21] L2 index
+ 
+|                 |         +---------------------> [38:30] L1 index
+ 
+|                 +-------------------------------> [47:39] L0 index
++-------------------------------------------------> [63] TTBR0/1
+*/
+
+/*
+TX2 使用39bit地址空间，4K page，3级映射
+Translation table lookup with 4KB pages:
++--------+--------+--------+--------+--------+--------+--------+--------+
+|63    56|55    48|47    40|39    32|31    24|23    16|15     8|7      0|
++--------+--------+--------+--------+--------+--------+--------+--------+
+|                           |         |         |         |
+|                           |         |         |         v
+|                           |         |         |   [11:0]  in-page offset 
+|                           |         |         +-> [20:12] L2 index 
+|                           |         +-----------> [29:21] L1 index 
+|                           +---------------------> [38:30] L0 index
++-------------------------------------------------> [63] TTBR0/1
+
+如果 L1 映射表里，保存的是block mem的话，则L1表项可以指向 2MB (0-20共21bit,表示2MB)
+*/
+
+/*
+TX2   kernel 4.9
+Memory: 7976748K/8220672K available (14846K kernel code, 2394K rwdata, 6456K rodata, 7488K init, 605K bss, 178388K reserved, 65536K cma-reserved)
+Virtual kernel memory layout:
+modules : 0xffffff8000000000 - 0xffffff8008000000   (   128 MB)
+vmalloc : 0xffffff8008000000 - 0xffffffbebfff0000   (   250 GB)
+.text : 0xffffff8008080000 - 0xffffff8008f00000   ( 14848 KB)
+.rodata : 0xffffff8008f00000 - 0xffffff8009560000   (  6528 KB)
+.init : 0xffffff8009560000 - 0xffffff8009cb0000   (  7488 KB)
+.data : 0xffffff8009cb0000 - 0xffffff8009f06808   (  2395 KB)
+.bss : 0xffffff8009f06808 - 0xffffff8009f9deb4   (   606 KB)
+fixed   : 0xffffffbefe7fd000 - 0xffffffbefec00000   (  4108 KB)
+PCI I/O : 0xffffffbefee00000 - 0xffffffbeffe00000   (    16 MB)
+vmemmap : 0xffffffbf00000000 - 0xffffffc000000000   (     4 GB maximum)
+          0xffffffbf00000000 - 0xffffffbf07dc8000   (   125 MB actual)
+memory  : 0xffffffc000000000 - 0xffffffc1f7200000   (  8050 MB)
+*/
+
+/*
+为了查找代码方便把TEXT_OFFSET的宏定义搬到这里    　　这个定义是 tx2 里的定义                          512K
+正常状态下这个宏是编译时传入的，在makefile里定义                arch/arm64/Makefile 里定义
+*/
+#define TEXT_OFFSET   0x00080000     /* bootloader会把kernel image从外设copy到RAM中，那么具体copy到什么位置呢？从RAM的起始地址开始吗？
+                                        实际上是从TEXT_OFFSET开始的，偏移这么一小段内存估计是为了bootloader和kernel之间传递一些信息。
+                                        所以，这里TEXT是指kernel text segment，而OFFSET是相对于RAM的首地址而言的。
+                                        TEXT_OFFSET必须要4K对齐并且TEXT_OFFSET的size不能大于2M。
+                                     */
+
+
+#define VA_BITS			(CONFIG_ARM64_VA_BITS)    //  虚拟地址宽度,最大值为48,
+                                                  //  比如配置为39，       空间大于是      512G
+                                                  //  用户地址 0x00000000_00000000 - 0x0000007f_ffffffff
+                                                  //  内核空间地址为 0xffffff80_00000000 - 0xffffffff_ffffffff ,分别为 512G
+                                                  //  tx2  : 39
+#define VA_START		(UL(0xffffffffffffffff) - (UL(1) << VA_BITS) + 1)       // 内核虚拟地址的起始地址     
+                                                                                // 地址宽度是  　39 时      VA_START = 0xffffff80_00000000
+#define PAGE_OFFSET		(UL(0xffffffffffffffff) - (UL(1) << (VA_BITS - 1)) + 1)   //  内核里映像看到的物理内存映射起始地址
+                                                                                  //  地址宽度是 39 时 PAGE_OFFSET = 0xffffffC0_00000000
+#define KIMAGE_VADDR		(MODULES_END)                      // kernel image start address
+                                                               // tx2 : 0xffffff8008000000
+#define MODULES_END		(MODULES_VADDR + MODULES_VSIZE)        // 内核模块的结束地址
+                                                               // tx2 MODULES_END = VA_START + SZ_128M         0xffffff80_08000000
+#define MODULES_VADDR		(VA_START + KASAN_SHADOW_SIZE)     // 内核模块的起始地址
+                                                               // tx2  MODULES_VADDR = VA_START    0xffffff80_00000000
 #define MODULES_VSIZE		(SZ_128M)
 #define VMEMMAP_START		(PAGE_OFFSET - VMEMMAP_SIZE)
 #define PCI_IO_END		(VMEMMAP_START - SZ_2M)
@@ -78,17 +152,19 @@
 /* The physical address of the end of vmemmap */
 #define VMEMMAP_END_PHYS	((VMEMMAP_SIZE >> STRUCT_PAGE_MAX_SHIFT) << PAGE_SHIFT)
 
-#define KERNEL_START      _text
-#define KERNEL_END        _end
+#define KERNEL_START      _text   // _text表示内核映像段的起始地址　(虚拟地址)
+                                // _text 在 arch/arm64/kernel/vmlinux.lds.s 里定义成 KIMAGE_VADDR + TEXT_OFFSET
+                                // tx2 : 0xFFFFFF8008080000
+#define KERNEL_END        _end   // _end表示映射结束的地址　(虚拟地址)
 
 /*
  * The size of the KASAN shadow region. This should be 1/8th of the
  * size of the entire kernel virtual address space.
  */
-#ifdef CONFIG_KASAN
+#ifdef CONFIG_KASAN    // tx2 没定义这个
 #define KASAN_SHADOW_SIZE	(UL(1) << (VA_BITS - 3))
 #else
-#define KASAN_SHADOW_SIZE	(0)
+#define KASAN_SHADOW_SIZE	(0)    //  tx2 采用这个定义
 #endif
 
 /*
@@ -147,13 +223,21 @@
 
 extern s64			memstart_addr;
 /* PHYS_OFFSET - the physical address of the start of memory. */
-#define PHYS_OFFSET		({ VM_BUG_ON(memstart_addr & 1); memstart_addr; })
+#define PHYS_OFFSET		({ VM_BUG_ON(memstart_addr & 1); memstart_addr; })  /*系统内存的起始物理地址。
+                                                                             在系统初始化的过程中，
+                                                                          会把PHYS_OFFSET开始的物理内存映射到PAGE_OFFSET的虚拟内存上去。
+                                                                           */
+                                                                           // tx2 : 
 
 /* the virtual base of the kernel image (minus TEXT_OFFSET) */
-extern u64			kimage_vaddr;
+extern u64			kimage_vaddr;    // arch/arm64/kernel/head.s 里定义　__primary_switched　里赋值
+                                    // 赋值为内核的起始地址，　虚拟地址
+                                    // tx2 : kimage_vaddr : 0xFFFFFF8008000000
 
 /* the offset between the kernel virtual and physical mappings */
-extern u64			kimage_voffset;
+extern u64			kimage_voffset;  // arch/arm64/kernel/head.s 的函数    __primary_switched 里赋值
+                                    // 表示内核起始虚拟地址和内核起始物理地址的差值
+                                    // 变量定义在 arch/arm64/mm/mmu.c 里
 
 static inline unsigned long kaslr_offset(void)
 {
