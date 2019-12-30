@@ -99,10 +99,15 @@ static struct kmem_cache *dentry_cache __read_mostly;
  * information, yet avoid using a prime hash-size or similar.
  */
 
-static unsigned int d_hash_mask __read_mostly;
-static unsigned int d_hash_shift __read_mostly;
+// static unsigned int d_hash_mask __read_mostly; 源码是这一行，走读方便，改成下一行
+static unsigned int d_hash_mask; // dcache_init_early 里初始化
+                                    // tx2 : 0x000fffff
+// static unsigned int d_hash_shift __read_mostly; 源码是这一行，走读方便，改成下一行
+static unsigned int d_hash_shift; // dcache_init_early 里初始化
+                                    // tx2 : 0x00000014 (20)
 
-static struct hlist_bl_head *dentry_hashtable __read_mostly;
+// static struct hlist_bl_head *dentry_hashtable __read_mostly; 源码是这一行，走读方便，改成下一行
+static struct hlist_bl_head *dentry_hashtable;  // dcache_init_early 里初始化
 
 static inline struct hlist_bl_head *d_hash(unsigned int hash)
 {
@@ -3610,7 +3615,7 @@ static int __init set_dhash_entries(char *str)
 	return 1;
 }
 __setup("dhash_entries=", set_dhash_entries);
-
+// vfs_caches_init_early -> dcache_init_early
 static void __init dcache_init_early(void)
 {
 	unsigned int loop;
@@ -3618,7 +3623,7 @@ static void __init dcache_init_early(void)
 	/* If hashes are distributed across NUMA nodes, defer
 	 * hash allocation until vmalloc space is available.
 	 */
-	if (hashdist)
+	if (hashdist)  // tx2 hashdist = 0
 		return;
 
 	dentry_hashtable =
@@ -3649,7 +3654,7 @@ static void __init dcache_init(void)
 		SLAB_RECLAIM_ACCOUNT|SLAB_PANIC|SLAB_MEM_SPREAD|SLAB_ACCOUNT);
 
 	/* Hash may have been set up in dcache_init_early */
-	if (!hashdist)
+	if (!hashdist)  // tx2 hashdist = 0
 		return;
 
 	dentry_hashtable =
@@ -3672,7 +3677,7 @@ struct kmem_cache *names_cachep __read_mostly;
 EXPORT_SYMBOL(names_cachep);
 
 EXPORT_SYMBOL(d_genocide);
-
+// start_kernel -> vfs_caches_init_early
 void __init vfs_caches_init_early(void)
 {
 	dcache_init_early();

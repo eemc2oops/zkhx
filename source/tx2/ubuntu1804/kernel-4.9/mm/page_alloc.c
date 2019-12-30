@@ -118,7 +118,9 @@ EXPORT_SYMBOL(node_states);
 /* Protect totalram_pages and zone->managed_pages */
 static DEFINE_SPINLOCK(managed_page_count_lock);
 
-unsigned long totalram_pages __read_mostly;
+// unsigned long totalram_pages __read_mostly; 源码是这一行，为阅读代码，改成下一行
+unsigned long totalram_pages;  // free_all_bootmem 里赋值
+                                // tx2 : 1994187
 unsigned long totalreserve_pages __read_mostly;
 unsigned long totalcma_pages __read_mostly;
 
@@ -295,7 +297,7 @@ EXPORT_SYMBOL(nr_online_nodes);
 
 int page_group_by_mobility_disabled __read_mostly;
 
-#ifdef CONFIG_DEFERRED_STRUCT_PAGE_INIT
+#ifdef CONFIG_DEFERRED_STRUCT_PAGE_INIT   // tx2 没有定义 CONFIG_DEFERRED_STRUCT_PAGE_INIT
 
 /*
  * Determine how many pages need to be initialized durig early boot
@@ -362,10 +364,11 @@ static inline bool update_defer_init(pg_data_t *pgdat,
 	return true;
 }
 #else
+// free_area_init_node -> reset_deferred_meminit
 static inline void reset_deferred_meminit(pg_data_t *pgdat)
 {
 }
-
+// __free_pages_bootmem -> early_page_uninitialised
 static inline bool early_page_uninitialised(unsigned long pfn)
 {
 	return false;
@@ -1247,7 +1250,9 @@ static inline void init_reserved_page(unsigned long pfn)
  * marks the pages PageReserved. The remaining valid pages are later
  * sent to the buddy page allocator.
  */
-void __meminit reserve_bootmem_region(phys_addr_t start, phys_addr_t end)
+// free_low_memory_core_early -> reserve_bootmem_region
+// void __meminit reserve_bootmem_region(phys_addr_t start, phys_addr_t end) 源码是这一行，走读，改成下一行
+void reserve_bootmem_region(phys_addr_t start, phys_addr_t end)
 {
 	unsigned long start_pfn = PFN_DOWN(start);
 	unsigned long end_pfn = PFN_UP(end);
@@ -1281,7 +1286,7 @@ static void __free_pages_ok(struct page *page, unsigned int order)
 	free_one_page(page_zone(page), page, pfn, order, migratetype);
 	local_irq_restore(flags);
 }
-
+// __free_pages_bootmem -> __free_pages_boot_core
 static void __init __free_pages_boot_core(struct page *page, unsigned int order)
 {
 	unsigned int nr_pages = 1 << order;
@@ -1353,11 +1358,11 @@ static inline bool __meminit meminit_pfn_in_nid(unsigned long pfn, int node,
 }
 #endif
 
-
+// __free_pages_memory -> __free_pages_bootmem
 void __init __free_pages_bootmem(struct page *page, unsigned long pfn,
 							unsigned int order)
 {
-	if (early_page_uninitialised(pfn))
+	if (early_page_uninitialised(pfn))  // tx2 if (false)
 		return;
 	return __free_pages_boot_core(page, order);
 }
@@ -5318,7 +5323,7 @@ void __init setup_per_cpu_pageset(void)
 		pgdat->per_cpu_nodestats =
 			alloc_percpu(struct per_cpu_nodestat);
 }
-
+// free_area_init_core -> zone_pcp_init
 static __meminit void zone_pcp_init(struct zone *zone)
 {
 	/*
@@ -5333,7 +5338,7 @@ static __meminit void zone_pcp_init(struct zone *zone)
 			zone->name, zone->present_pages,
 					 zone_batchsize(zone));
 }
-
+// free_area_init_core -> init_currently_empty_zone
 int __meminit init_currently_empty_zone(struct zone *zone,
 					unsigned long zone_start_pfn,
 					unsigned long size)
@@ -5704,7 +5709,7 @@ static void __meminit calculate_node_totalpages(struct pglist_data *pgdat,
 							realtotalpages);
 }
 
-#ifndef CONFIG_SPARSEMEM
+#ifndef CONFIG_SPARSEMEM   // tx2 定义了 CONFIG_SPARSEMEM
 /*
  * Calculate the size of the zone->blockflags rounded to an unsigned long
  * Start by making sure zonesize is a multiple of pageblock_order by rounding
@@ -5738,11 +5743,12 @@ static void __init setup_usemap(struct pglist_data *pgdat,
 							 pgdat->node_id);
 }
 #else
+// free_area_init_core -> setup_usemap
 static inline void setup_usemap(struct pglist_data *pgdat, struct zone *zone,
 				unsigned long zone_start_pfn, unsigned long zonesize) {}
 #endif /* CONFIG_SPARSEMEM */
 
-#ifdef CONFIG_HUGETLB_PAGE_SIZE_VARIABLE
+#ifdef CONFIG_HUGETLB_PAGE_SIZE_VARIABLE  // tx2 没有定义 CONFIG_HUGETLB_PAGE_SIZE_VARIABLE
 
 /* Initialise the number of pages represented by NR_PAGEBLOCK_BITS */
 void __paginginit set_pageblock_order(void)
@@ -5773,6 +5779,7 @@ void __paginginit set_pageblock_order(void)
  * include/linux/pageblock-flags.h for the values of pageblock_order based on
  * the kernel config
  */
+// sparse_init -> set_pageblock_order
 void __paginginit set_pageblock_order(void)
 {
 }
@@ -5807,6 +5814,7 @@ static unsigned long __paginginit calc_memmap_size(unsigned long spanned_pages,
  *
  * NOTE: pgdat should get zeroed by caller.
  */
+// free_area_init_node -> free_area_init_core
 static void __paginginit free_area_init_core(struct pglist_data *pgdat)
 {
 	enum zone_type j;
@@ -5814,16 +5822,17 @@ static void __paginginit free_area_init_core(struct pglist_data *pgdat)
 	int ret;
 
 	pgdat_resize_init(pgdat);
-#ifdef CONFIG_NUMA_BALANCING
+#ifdef CONFIG_NUMA_BALANCING  // tx2 没有定义 CONFIG_NUMA_BALANCING
 	spin_lock_init(&pgdat->numabalancing_migrate_lock);
 	pgdat->numabalancing_migrate_nr_pages = 0;
 	pgdat->numabalancing_migrate_next_window = jiffies;
 #endif
-#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+#ifdef CONFIG_TRANSPARENT_HUGEPAGE  // tx2 定义了 CONFIG_TRANSPARENT_HUGEPAGE
 	spin_lock_init(&pgdat->split_queue_lock);
 	INIT_LIST_HEAD(&pgdat->split_queue);
 	pgdat->split_queue_len = 0;
 #endif
+
 	init_waitqueue_head(&pgdat->kswapd_wait);
 	init_waitqueue_head(&pgdat->pfmemalloc_wait);
 #ifdef CONFIG_COMPACTION
@@ -5891,15 +5900,15 @@ static void __paginginit free_area_init_core(struct pglist_data *pgdat)
 		if (!size)
 			continue;
 
-		set_pageblock_order();
-		setup_usemap(pgdat, zone, zone_start_pfn, size);
+		set_pageblock_order();  // tx2 这个函数没作用
+		setup_usemap(pgdat, zone, zone_start_pfn, size);  // tx2 这个函数没作用
 		ret = init_currently_empty_zone(zone, zone_start_pfn, size);
 		BUG_ON(ret);
 		memmap_init(size, nid, j, zone_start_pfn);
 	}
 }
-
-static void __ref alloc_node_mem_map(struct pglist_data *pgdat)
+// free_area_init_node -> alloc_node_mem_map
+static void __ref alloc_node_mem_map(struct pglist_data *pgdat)  //  tx2 里这个函数没有作用
 {
 	unsigned long __maybe_unused start = 0;
 	unsigned long __maybe_unused offset = 0;
@@ -5908,7 +5917,7 @@ static void __ref alloc_node_mem_map(struct pglist_data *pgdat)
 	if (!pgdat->node_spanned_pages)
 		return;
 
-#ifdef CONFIG_FLAT_NODE_MEM_MAP
+#ifdef CONFIG_FLAT_NODE_MEM_MAP  // tx2 没有定义 CONFIG_FLAT_NODE_MEM_MAP  以下代码均不编译
 	start = pgdat->node_start_pfn & ~(MAX_ORDER_NR_PAGES - 1);
 	offset = pgdat->node_start_pfn - start;
 	/* ia64 gets its own node_mem_map, before this, without bootmem */
@@ -5944,7 +5953,7 @@ static void __ref alloc_node_mem_map(struct pglist_data *pgdat)
 #endif
 #endif /* CONFIG_FLAT_NODE_MEM_MAP */
 }
-
+// zone_sizes_init -> free_area_init_node
 void __paginginit free_area_init_node(int nid, unsigned long *zones_size,
 		unsigned long node_start_pfn, unsigned long *zholes_size)
 {
@@ -5958,7 +5967,7 @@ void __paginginit free_area_init_node(int nid, unsigned long *zones_size,
 	pgdat->node_id = nid;
 	pgdat->node_start_pfn = node_start_pfn;
 	pgdat->per_cpu_nodestats = NULL;
-#ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP
+#ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP  // tx2 没有定义 CONFIG_HAVE_MEMBLOCK_NODE_MAP
 	get_pfn_range_for_nid(nid, &start_pfn, &end_pfn);
 	pr_info("Initmem setup node %d [mem %#018Lx-%#018Lx]\n", nid,
 		(u64)start_pfn << PAGE_SHIFT,
@@ -5969,14 +5978,14 @@ void __paginginit free_area_init_node(int nid, unsigned long *zones_size,
 	calculate_node_totalpages(pgdat, start_pfn, end_pfn,
 				  zones_size, zholes_size);
 
-	alloc_node_mem_map(pgdat);
-#ifdef CONFIG_FLAT_NODE_MEM_MAP
+	alloc_node_mem_map(pgdat);  // tx2 里可以忽略这个函数
+#ifdef CONFIG_FLAT_NODE_MEM_MAP  // tx2 没有定义 CONFIG_FLAT_NODE_MEM_MAP
 	printk(KERN_DEBUG "free_area_init_node: node %d, pgdat %08lx, node_mem_map %08lx\n",
 		nid, (unsigned long)pgdat,
 		(unsigned long)pgdat->node_mem_map);
 #endif
 
-	reset_deferred_meminit(pgdat);
+	reset_deferred_meminit(pgdat);  // tx2 里可以忽略这个函数
 	free_area_init_core(pgdat);
 }
 
@@ -6495,7 +6504,7 @@ void free_highmem_page(struct page *page)
 }
 #endif
 
-
+// mem_init -> mem_init_print_info
 void __init mem_init_print_info(const char *str)
 {
 	unsigned long physpages, codesize, datasize, rosize, bss_size;
@@ -6970,7 +6979,7 @@ out:
 	return ret;
 }
 
-#ifdef CONFIG_NUMA
+#ifdef CONFIG_NUMA  // tx2 没有定义 CONFIG_NUMA
 int hashdist = HASHDIST_DEFAULT;
 
 static int __init set_hashdist(char *str)

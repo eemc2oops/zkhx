@@ -84,7 +84,7 @@ enum ipi_msg_type {
 
 struct irq_domain *ipi_custom_irq_domain;
 
-#ifdef CONFIG_ARM64_VHE
+#ifdef CONFIG_ARM64_VHE  // tx2 没有定义 CONFIG_ARM64_VHE
 
 /* Whether the boot CPU is running in HYP mode or not*/
 static bool boot_cpu_hyp_mode;
@@ -118,6 +118,7 @@ void verify_cpu_run_el(void)
 }
 
 #else
+// smp_prepare_boot_cpu -> save_boot_cpu_run_el
 static inline void save_boot_cpu_run_el(void) {}
 #endif
 
@@ -445,7 +446,7 @@ void __init smp_cpus_done(unsigned int max_cpus)
 	hyp_mode_check();
 	apply_alternatives_all();
 }
-
+// start_kernel -> smp_prepare_boot_cpu
 void __init smp_prepare_boot_cpu(void)
 {
 	set_my_cpu_offset(per_cpu_offset(smp_processor_id()));
@@ -511,6 +512,7 @@ static bool __init is_mpidr_duplicate(unsigned int cpu, u64 hwid)
  * Initialize cpu operations for a logical cpu and
  * set it in the possible mask on success
  */
+// smp_init_cpus -> smp_cpu_setup
 static int __init smp_cpu_setup(int cpu)
 {
 	if (cpu_read_ops(cpu))
@@ -675,11 +677,12 @@ next:
  * cpu logical map array containing MPIDR values related to logical
  * cpus. Assumes that cpu_logical_map(0) has already been initialized.
  */
+// setup_arch -> smp_init_cpus
 void __init smp_init_cpus(void)
 {
 	int i;
 
-	if (acpi_disabled)
+	if (acpi_disabled) // tx2   acpi_disabled = 1
 		of_parse_and_init_cpus();
 	else
 		/*

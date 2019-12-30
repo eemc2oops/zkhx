@@ -20,6 +20,10 @@
 
 #include "internal.h"
 
+// tx2 没有编译本文件
+// 所以先把本文件屏蔽掉
+#if 0  // tx2 没有编译本文件，所以屏蔽掉
+
 #ifndef CONFIG_NEED_MULTIPLE_NODES
 struct pglist_data __refdata contig_page_data = {
 	.bdata = &bootmem_node_data[0]
@@ -857,3 +861,6 @@ void * __init __alloc_bootmem_low_node(pg_data_t *pgdat, unsigned long size,
 	return ___alloc_bootmem_node(pgdat, size, align,
 				     goal, ARCH_LOW_ADDRESS_LIMIT);
 }
+
+#endif // tx2 没有编译本文件，所以屏蔽掉
+

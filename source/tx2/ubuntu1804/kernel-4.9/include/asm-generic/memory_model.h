@@ -27,12 +27,12 @@
 /*
  * supports 3 memory models.
  */
-#if defined(CONFIG_FLATMEM)
+#if defined(CONFIG_FLATMEM)  // tx2 没有定义 CONFIG_FLATMEM
 
 #define __pfn_to_page(pfn)	(mem_map + ((pfn) - ARCH_PFN_OFFSET))
 #define __page_to_pfn(page)	((unsigned long)((page) - mem_map) + \
 				 ARCH_PFN_OFFSET)
-#elif defined(CONFIG_DISCONTIGMEM)
+#elif defined(CONFIG_DISCONTIGMEM)  // tx2 没有定义 CONFIG_DISCONTIGMEM
 
 #define __pfn_to_page(pfn)			\
 ({	unsigned long __pfn = (pfn);		\
@@ -47,13 +47,14 @@
 	 __pgdat->node_start_pfn;					\
 })
 
-#elif defined(CONFIG_SPARSEMEM_VMEMMAP)
+#elif defined(CONFIG_SPARSEMEM_VMEMMAP)   // tx2 定义了　　CONFIG_SPARSEMEM_VMEMMAP
 
 /* memmap is virtually contiguous.  */
-#define __pfn_to_page(pfn)	(vmemmap + (pfn))
+// sparse_mem_map_populate -> pfn_to_page -> __pfn_to_page   生成 page 映射的流程
+#define __pfn_to_page(pfn)	(vmemmap + (pfn))   // tx2 用的这个定义  
 #define __page_to_pfn(page)	(unsigned long)((page) - vmemmap)
 
-#elif defined(CONFIG_SPARSEMEM)
+#elif defined(CONFIG_SPARSEMEM)　　　// tx2 定义了 CONFIG_SPARSEMEM
 /*
  * Note: section's mem_map is encoded to reflect its start_pfn.
  * section[i].section_mem_map == mem_map's address - start_pfn;

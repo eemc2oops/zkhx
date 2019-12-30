@@ -107,6 +107,7 @@ EXPORT_SYMBOL(ioremap_cache);
 /*
  * Must be called after early_fixmap_init
  */
+// setup_arc -> early_ioremap_init
 void __init early_ioremap_init(void)
 {
 	early_ioremap_setup();

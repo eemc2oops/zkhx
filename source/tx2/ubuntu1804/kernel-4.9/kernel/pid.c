@@ -571,6 +571,7 @@ struct pid *find_ge_pid(int nr, struct pid_namespace *ns)
  * machine.  From a minimum of 16 slots up to 4096 slots at one gigabyte or
  * more.
  */
+// start_kernel -> pidhash_init
 void __init pidhash_init(void)
 {
 	unsigned int i, pidhash_size;

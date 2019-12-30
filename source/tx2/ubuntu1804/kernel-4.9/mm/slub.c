@@ -283,7 +283,7 @@ static inline int order_objects(int order, unsigned long size, int reserved)
 {
 	return ((PAGE_SIZE << order) - reserved) / size;
 }
-
+// calculate_sizes -> oo_make
 static inline struct kmem_cache_order_objects oo_make(int order,
 		unsigned long size, int reserved)
 {
@@ -448,13 +448,13 @@ static inline void *restore_red_left(struct kmem_cache *s, void *p)
 /*
  * Debug settings:
  */
-#if defined(CONFIG_SLUB_DEBUG_ON)
+#if defined(CONFIG_SLUB_DEBUG_ON)  // tx2 没有定义 CONFIG_SLUB_DEBUG_ON
 static int slub_debug = DEBUG_DEFAULT_FLAGS;
 #else
-static int slub_debug;
+static int slub_debug;  // kmem_cache_flags
 #endif
 
-static char *slub_debug_slabs;
+static char *slub_debug_slabs;    // kmem_cache_flags
 static int disable_higher_order_debug;
 
 /*
@@ -1252,7 +1252,7 @@ out:
 }
 
 __setup("slub_debug", setup_slub_debug);
-
+// kmem_cache_open -> kmem_cache_flags
 unsigned long kmem_cache_flags(unsigned long object_size,
 	unsigned long flags, const char *name,
 	void (*ctor)(void *))
@@ -1511,6 +1511,7 @@ static bool shuffle_freelist(struct kmem_cache *s, struct page *page)
 	return true;
 }
 #else
+// kmem_cache_open -> init_cache_random_seq
 static inline int init_cache_random_seq(struct kmem_cache *s)
 {
 	return 0;
@@ -1977,7 +1978,7 @@ static inline void note_cmpxchg_failure(const char *n,
 #endif
 	stat(s, CMPXCHG_DOUBLE_CPU_FAIL);
 }
-
+// alloc_kmem_cache_cpus -> init_kmem_cache_cpus
 static void init_kmem_cache_cpus(struct kmem_cache *s)
 {
 	int cpu;
@@ -2330,6 +2331,7 @@ static int slub_cpu_dead(unsigned int cpu)
  * Check if the objects in a per cpu structure fit numa
  * locality expectations.
  */
+// ___slab_alloc -> node_match
 static inline int node_match(struct page *page, int node)
 {
 #ifdef CONFIG_NUMA
@@ -2499,6 +2501,7 @@ static inline void *get_freelist(struct kmem_cache *s, struct page *page)
  * Version of __slab_alloc to use when we know that interrupts are
  * already disabled (which is the case for bulk allocation).
  */
+// __slab_alloc -> ___slab_alloc
 static void *___slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
 			  unsigned long addr, struct kmem_cache_cpu *c)
 {
@@ -2510,7 +2513,7 @@ static void *___slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
 		goto new_slab;
 redo:
 
-	if (unlikely(!node_match(page, node))) {
+	if (unlikely(!node_match(page, node))) {  // tx2 : node_match 返回１　进不了这个分支
 		int searchnode = node;
 
 		if (node != NUMA_NO_NODE && !node_present_pages(node))
@@ -2599,6 +2602,7 @@ new_slab:
  * Another one that disabled interrupt and compensates for possible
  * cpu changes by refetching the per cpu area pointer.
  */
+// slab_alloc_node -> __slab_alloc
 static void *__slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
 			  unsigned long addr, struct kmem_cache_cpu *c)
 {
@@ -2630,6 +2634,7 @@ static void *__slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
  *
  * Otherwise we can simply pick the next object from the lockless free list.
  */
+// slab_alloc -> slab_alloc_node
 static __always_inline void *slab_alloc_node(struct kmem_cache *s,
 		gfp_t gfpflags, int node, unsigned long addr)
 {
@@ -2716,13 +2721,15 @@ redo:
 
 	return object;
 }
-
+// kmem_cache_alloc -> slab_alloc
 static __always_inline void *slab_alloc(struct kmem_cache *s,
 		gfp_t gfpflags, unsigned long addr)
 {
 	return slab_alloc_node(s, gfpflags, NUMA_NO_NODE, addr);
 }
-
+// create_object -> kmem_cache_alloc
+// kmem_cache_alloc_node -> kmem_cache_alloc
+// kmem_cache_zalloc -> kmem_cache_alloc
 void *kmem_cache_alloc(struct kmem_cache *s, gfp_t gfpflags)
 {
 	void *ret = slab_alloc(s, gfpflags, _RET_IP_);
@@ -3223,7 +3230,7 @@ static inline int slab_order(int size, int min_objects,
 
 	return order;
 }
-
+// calculate_sizes -> calculate_order
 static inline int calculate_order(int size, int reserved)
 {
 	int order;
@@ -3273,9 +3280,8 @@ static inline int calculate_order(int size, int reserved)
 		return order;
 	return -ENOSYS;
 }
-
-static void
-init_kmem_cache_node(struct kmem_cache_node *n)
+// init_kmem_cache_nodes -> init_kmem_cache_node
+static void init_kmem_cache_node(struct kmem_cache_node *n)
 {
 	n->nr_partial = 0;
 	spin_lock_init(&n->list_lock);
@@ -3286,7 +3292,7 @@ init_kmem_cache_node(struct kmem_cache_node *n)
 	INIT_LIST_HEAD(&n->full);
 #endif
 }
-
+// kmem_cache_open -> alloc_kmem_cache_cpus
 static inline int alloc_kmem_cache_cpus(struct kmem_cache *s)
 {
 	BUILD_BUG_ON(PERCPU_DYNAMIC_EARLY_SIZE <
@@ -3307,7 +3313,7 @@ static inline int alloc_kmem_cache_cpus(struct kmem_cache *s)
 	return 1;
 }
 
-static struct kmem_cache *kmem_cache_node;
+static struct kmem_cache *kmem_cache_node;    // kmem_cache_init 里初始化
 
 /*
  * No kmalloc_node yet so do it by hand. We know that this is the first
@@ -3372,12 +3378,12 @@ void __kmem_cache_release(struct kmem_cache *s)
 	free_percpu(s->cpu_slab);
 	free_kmem_cache_nodes(s);
 }
-
+// kmem_cache_open -> init_kmem_cache_nodes
 static int init_kmem_cache_nodes(struct kmem_cache *s)
 {
 	int node;
 
-	for_each_node_state(node, N_NORMAL_MEMORY) {
+	for_each_node_state(node, N_NORMAL_MEMORY) {  // tx2 : node 只有一个取值 0 
 		struct kmem_cache_node *n;
 
 		if (slab_state == DOWN) {
@@ -3397,7 +3403,7 @@ static int init_kmem_cache_nodes(struct kmem_cache *s)
 	}
 	return 1;
 }
-
+// kmem_cache_open -> set_min_partial
 static void set_min_partial(struct kmem_cache *s, unsigned long min)
 {
 	if (min < MIN_PARTIAL)
@@ -3411,6 +3417,7 @@ static void set_min_partial(struct kmem_cache *s, unsigned long min)
  * calculate_sizes() determines the order and the distribution of data within
  * a slab object.
  */
+// kmem_cache_open -> calculate_sizes
 static int calculate_sizes(struct kmem_cache *s, int forced_order)
 {
 	unsigned long flags = s->flags;
@@ -3528,7 +3535,7 @@ static int calculate_sizes(struct kmem_cache *s, int forced_order)
 
 	return !!oo_objects(s->oo);
 }
-
+// __kmem_cache_create -> kmem_cache_open
 static int kmem_cache_open(struct kmem_cache *s, unsigned long flags)
 {
 	s->flags = kmem_cache_flags(s->size, flags, s->name, s->ctor);
@@ -3599,7 +3606,7 @@ static int kmem_cache_open(struct kmem_cache *s, unsigned long flags)
 
 	/* Initialize the pre-computed randomized freelist if slab is up */
 	if (slab_state >= UP) {
-		if (init_cache_random_seq(s))
+		if (init_cache_random_seq(s))  // tx2 可以忽略这个函数
 			goto error;
 	}
 
@@ -4080,7 +4087,7 @@ static struct notifier_block slab_memory_callback_nb = {
  * the page allocator. Allocate them properly then fix up the pointers
  * that may be pointing to the wrong kmem_cache structure.
  */
-
+// kmem_cache_init -> bootstrap
 static struct kmem_cache * __init bootstrap(struct kmem_cache *static_cache)
 {
 	int node;
@@ -4110,15 +4117,16 @@ static struct kmem_cache * __init bootstrap(struct kmem_cache *static_cache)
 	list_add(&s->list, &slab_caches);
 	return s;
 }
-
+// mm_init -> kmem_cache_init
 void __init kmem_cache_init(void)
 {
 	static __initdata struct kmem_cache boot_kmem_cache,
-		boot_kmem_cache_node;
+		boot_kmem_cache_node;  // 临时cache
 
 	if (debug_guardpage_minorder())
 		slub_max_order = 0;
 
+    // 先创建临时cache
 	kmem_cache_node = &boot_kmem_cache_node;
 	kmem_cache = &boot_kmem_cache;
 
@@ -4135,6 +4143,7 @@ void __init kmem_cache_init(void)
 				nr_node_ids * sizeof(struct kmem_cache_node *),
 		       SLAB_HWCACHE_ALIGN);
 
+    // 通过临时cache，分配真正的cache空间
 	kmem_cache = bootstrap(&boot_kmem_cache);
 
 	/*
@@ -4195,7 +4204,7 @@ __kmem_cache_alias(const char *name, size_t size, size_t align,
 
 	return s;
 }
-
+// create_boot_cache -> __kmem_cache_create
 int __kmem_cache_create(struct kmem_cache *s, unsigned long flags)
 {
 	int err;

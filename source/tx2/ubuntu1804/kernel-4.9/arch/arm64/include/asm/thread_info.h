@@ -44,13 +44,15 @@ typedef unsigned long mm_segment_t;
 /*
  * low level task data that entry.S needs immediate access to.
  */
+// task_struct.thread_info
 struct thread_info {
 	unsigned long		flags;		/* low level flags */
 	                            //   arch/arm64/kernel/entry.s 里的 kernel_entry 在中断调用时，会通过 disable_step_tsk 设置该值
 	                            //   TIF_SINGLESTEP		21   中断调用时　disable_step_tsk 里会清这个标志位
+	                            // _TIF_SYSCALL_WORK  el0_svc 里判断该标志
 	mm_segment_t		addr_limit;	/* address limit */
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN
-	u64			ttbr0;		/* saved TTBR0_EL1 */
+	u64			ttbr0;		/* saved TTBR0_EL1 */  // init_task.thread_info.ttbr0 = __pa_symbol(empty_zero_page);     setup_arch 里赋值
 #endif
 	int			preempt_count;	/* 0 => preemptable, <0 => bug */
 };
@@ -118,7 +120,7 @@ struct thread_info {
 
 #define _TIF_SYSCALL_WORK	(_TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT | \
 				 _TIF_SYSCALL_TRACEPOINT | _TIF_SECCOMP | \
-				 _TIF_NOHZ)
+				 _TIF_NOHZ)   // arch/arm64/kernel/entry.S  el0_svc 里判断这个标志 进入 __sys_trace 
 
 #endif /* __KERNEL__ */
 #endif /* __ASM_THREAD_INFO_H */

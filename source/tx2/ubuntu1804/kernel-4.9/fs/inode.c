@@ -52,9 +52,14 @@
  *   inode_hash_lock
  */
 
-static unsigned int i_hash_mask __read_mostly;
-static unsigned int i_hash_shift __read_mostly;
-static struct hlist_head *inode_hashtable __read_mostly;
+// static unsigned int i_hash_mask __read_mostly; 源码是这一行，走读，改成下一行
+static unsigned int i_hash_mask; // inode_init_early 里初始化
+                                // tx2 : 0x0007ffff
+// static unsigned int i_hash_shift __read_mostly; 源码是这一行，走读，改成下一行
+static unsigned int i_hash_shift; // inode_init_early 里初始化
+                                 // tx2 : 0x00000013 (19)
+// static struct hlist_head *inode_hashtable __read_mostly; 源码是这一行，走读，改成下一行
+static struct hlist_head *inode_hashtable;  // inode_init_early 里初始化
 static __cacheline_aligned_in_smp DEFINE_SPINLOCK(inode_hash_lock);
 
 /*
@@ -1915,6 +1920,7 @@ __setup("ihash_entries=", set_ihash_entries);
 /*
  * Initialize the waitqueues and inode hash table.
  */
+// vfs_caches_init_early -> inode_init_early
 void __init inode_init_early(void)
 {
 	unsigned int loop;
@@ -1922,7 +1928,7 @@ void __init inode_init_early(void)
 	/* If hashes are distributed across NUMA nodes, defer
 	 * hash allocation until vmalloc space is available.
 	 */
-	if (hashdist)
+	if (hashdist)  // tx2 hashdist = 0
 		return;
 
 	inode_hashtable =
@@ -1953,7 +1959,7 @@ void __init inode_init(void)
 					 init_once);
 
 	/* Hash may have been set up in inode_init_early */
-	if (!hashdist)
+	if (!hashdist)  // tx2 hashdist = 0
 		return;
 
 	inode_hashtable =

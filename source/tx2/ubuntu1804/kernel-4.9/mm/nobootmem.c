@@ -26,14 +26,19 @@
 #error CONFIG_HAVE_MEMBLOCK not defined
 #endif
 
-#ifndef CONFIG_NEED_MULTIPLE_NODES
-struct pglist_data __refdata contig_page_data;
+#ifndef CONFIG_NEED_MULTIPLE_NODES // tx2 没有定义 CONFIG_NEED_MULTIPLE_NODES
+struct pglist_data __refdata contig_page_data;   // tx2 采用这个定义
+                                                  // 变量放在数据区 .data : 0xffffff8009cb0000 - 0xffffff8009f06808
 EXPORT_SYMBOL(contig_page_data);
 #endif
 
-unsigned long max_low_pfn;
+unsigned long max_low_pfn;  // bootmem_init 里赋值
 unsigned long min_low_pfn;
-unsigned long max_pfn;
+unsigned long max_pfn;  // 物理内存的最大页框数 
+                        // tx2 : 2585088  (0x277200)
+                        // 与 memblock.memory 的值有关，tx2 内存的最大范围是 [ 0x00000277000000 - 0x000002771fffff ]
+                        // bootmem_init 里赋值
+                        // mem_init 里使用
 unsigned long long max_possible_pfn;
 
 static void * __init __alloc_memory_core_early(int nid, u64 size, u64 align,
@@ -94,7 +99,7 @@ void __init free_bootmem_late(unsigned long addr, unsigned long size)
 		totalram_pages++;
 	}
 }
-
+// __free_memory_core -> __free_pages_memory
 static void __init __free_pages_memory(unsigned long start, unsigned long end)
 {
 	int order;
@@ -110,7 +115,7 @@ static void __init __free_pages_memory(unsigned long start, unsigned long end)
 		start += (1UL << order);
 	}
 }
-
+// free_low_memory_core_early -> __free_memory_core
 static unsigned long __init __free_memory_core(phys_addr_t start,
 				 phys_addr_t end)
 {
@@ -125,7 +130,7 @@ static unsigned long __init __free_memory_core(phys_addr_t start,
 
 	return end_pfn - start_pfn;
 }
-
+// free_all_bootmem -> free_low_memory_core_early
 static unsigned long __init free_low_memory_core_early(void)
 {
 	unsigned long count = 0;
@@ -135,7 +140,7 @@ static unsigned long __init free_low_memory_core_early(void)
 	memblock_clear_hotplug(0, -1);
 
 	for_each_reserved_mem_region(i, &start, &end)
-		reserve_bootmem_region(start, end);
+		reserve_bootmem_region(start, end);  // page_alloc.c 里定义
 
 	/*
 	 * We need to use NUMA_NO_NODE instead of NODE_DATA(0)->node_id
@@ -149,8 +154,9 @@ static unsigned long __init free_low_memory_core_early(void)
 	return count;
 }
 
-static int reset_managed_pages_done __initdata;
-
+// static int reset_managed_pages_done __initdata; 源码是这一行，走读，改成下一行．
+static int reset_managed_pages_done; // reset_all_zones_managed_pages 里修改，保证函数只执行一次
+// reset_all_zones_managed_pages -> reset_node_managed_pages
 void reset_node_managed_pages(pg_data_t *pgdat)
 {
 	struct zone *z;
@@ -158,7 +164,7 @@ void reset_node_managed_pages(pg_data_t *pgdat)
 	for (z = pgdat->node_zones; z < pgdat->node_zones + MAX_NR_ZONES; z++)
 		z->managed_pages = 0;
 }
-
+// free_all_bootmem -> reset_all_zones_managed_pages
 void __init reset_all_zones_managed_pages(void)
 {
 	struct pglist_data *pgdat;
@@ -177,6 +183,7 @@ void __init reset_all_zones_managed_pages(void)
  *
  * Returns the number of pages actually released.
  */
+// mem_init -> free_all_bootmem
 unsigned long __init free_all_bootmem(void)
 {
 	unsigned long pages;

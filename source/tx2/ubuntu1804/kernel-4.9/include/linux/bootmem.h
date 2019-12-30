@@ -153,7 +153,7 @@ extern void *__alloc_bootmem_low_node(pg_data_t *pgdat,
 	__alloc_bootmem_low_node(pgdat, x, PAGE_SIZE, 0)
 
 
-#if defined(CONFIG_HAVE_MEMBLOCK) && defined(CONFIG_NO_BOOTMEM)
+#if defined(CONFIG_HAVE_MEMBLOCK) && defined(CONFIG_NO_BOOTMEM)  // tx2 定义了 CONFIG_HAVE_MEMBLOCK 和 CONFIG_NO_BOOTMEM
 
 /* FIXME: use MEMBLOCK_ALLOC_* variants here */
 #define BOOTMEM_ALLOC_ACCESSIBLE	0
@@ -167,7 +167,7 @@ void *memblock_virt_alloc_try_nid(phys_addr_t size, phys_addr_t align,
 		phys_addr_t min_addr, phys_addr_t max_addr, int nid);
 void __memblock_free_early(phys_addr_t base, phys_addr_t size);
 void __memblock_free_late(phys_addr_t base, phys_addr_t size);
-
+// sparse_init -> memblock_virt_alloc
 static inline void * __init memblock_virt_alloc(
 					phys_addr_t size,  phys_addr_t align)
 {
@@ -362,7 +362,7 @@ extern void *alloc_large_system_hash(const char *tablename,
 /* Only NUMA needs hash distribution. 64bit NUMA architectures have
  * sufficient vmalloc space.
  */
-#ifdef CONFIG_NUMA
+#ifdef CONFIG_NUMA  // tx2 没有定义 CONFIG_NUMA
 #define HASHDIST_DEFAULT IS_ENABLED(CONFIG_64BIT)
 extern int hashdist;		/* Distribute hashes across NUMA nodes? */
 #else

@@ -98,7 +98,8 @@ struct break_hook {
 	struct list_head node;
 	u32 esr_val;
 	u32 esr_mask;
-	int (*fn)(struct pt_regs *regs, unsigned int esr);
+	int (*fn)(struct pt_regs *regs, unsigned int esr);  //
+	                                                    // bug_handler     early_brk64 里注册
 };
 
 void register_break_hook(struct break_hook *hook);

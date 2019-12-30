@@ -80,7 +80,8 @@ static void __init do_one_pass(u64 pattern, phys_addr_t start, phys_addr_t end)
 }
 
 /* default is disabled */
-static unsigned int memtest_pattern __initdata;
+// static unsigned int memtest_pattern __initdata; 源码定义是这一行，为了走读方便，改成下一行
+static unsigned int memtest_pattern;
 
 static int __init parse_memtest(char *arg)
 {
@@ -95,7 +96,7 @@ static int __init parse_memtest(char *arg)
 }
 
 early_param("memtest", parse_memtest);
-
+// bootmem_init -> early_memtest
 void __init early_memtest(phys_addr_t start, phys_addr_t end)
 {
 	unsigned int i;

@@ -60,7 +60,7 @@
 #define CGROUP2_SUPER_MAGIC	0x63677270
 
 
-#define STACK_END_MAGIC		0x57AC6E9D
+#define STACK_END_MAGIC		0x57AC6E9D     // 进程内核栈的尾部设置的守护值　set_task_stack_end_magic
 
 #define TRACEFS_MAGIC          0x74726163
 

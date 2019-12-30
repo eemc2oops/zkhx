@@ -56,8 +56,15 @@
  * executes, which assigns it its actual value. So use a default value
  * that cannot be mistaken for a real physical address.
  */
-s64 memstart_addr __ro_after_init = -1;
-phys_addr_t arm64_dma_phys_limit __ro_after_init;
+// s64 memstart_addr __ro_after_init = -1; 源码是这一行，为了阅读代码方便，把本行改成下一行
+s64 memstart_addr = -1;  // 表示内存管理的物理地址的起始地址
+                        // arm64_memblock_init 里赋值
+                        // tx2 : 0x0000000080000000
+// phys_addr_t arm64_dma_phys_limit __ro_after_init; 源码是这一行，为了阅读代码方便，把本行改成下一行
+phys_addr_t arm64_dma_phys_limit;  //
+                                    // tx2 : 0x0000000100000000    4G
+                                    // arm64_memblock_init 里赋值
+                                    // zone_sizes_init
 
 #ifdef CONFIG_BLK_DEV_INITRD
 static int __init early_initrd(char *p)
@@ -88,7 +95,7 @@ static phys_addr_t __init max_zone_dma_phys(void)
 	return min(offset + (1ULL << 32), memblock_end_of_DRAM());
 }
 
-#ifdef CONFIG_NUMA
+#ifdef CONFIG_NUMA  // tx2 没有定义 CONFIG_NUMA
 
 static void __init zone_sizes_init(unsigned long min, unsigned long max)
 {
@@ -102,7 +109,7 @@ static void __init zone_sizes_init(unsigned long min, unsigned long max)
 }
 
 #else
-
+// bootmem_init -> zone_sizes_init
 static void __init zone_sizes_init(unsigned long min, unsigned long max)
 {
 	struct memblock_region *reg;
@@ -112,7 +119,7 @@ static void __init zone_sizes_init(unsigned long min, unsigned long max)
 	memset(zone_size, 0, sizeof(zone_size));
 
 	/* 4GB maximum for 32-bit only capable devices */
-#ifdef CONFIG_ZONE_DMA
+#ifdef CONFIG_ZONE_DMA  // tx2 定义了　CONFIG_ZONE_DMA
 	max_dma = PFN_DOWN(arm64_dma_phys_limit);
 	zone_size[ZONE_DMA] = max_dma - min;
 #endif
@@ -157,17 +164,27 @@ int pfn_valid(unsigned long pfn)
 EXPORT_SYMBOL(pfn_valid);
 #endif
 
-#ifndef CONFIG_SPARSEMEM
+#ifndef CONFIG_SPARSEMEM  // tx2 定义了 CONFIG_SPARSEMEM
 static void __init arm64_memory_present(void)
 {
 }
 #else
+// 记录哪些物理页面是存在的
+// bootmem_init -> arm64_memory_present
 static void __init arm64_memory_present(void)
 {
 	struct memblock_region *reg;
 
+    /*
+    for reg info :
+    base 0x0000000080000000   size 0x0000000070000000
+    base 0x00000000f0200000   size 0x0000000185600000
+    base 0x0000000275e00000   size 0x0000000000200000
+    base 0x0000000276600000   size 0x0000000000200000
+    base 0x0000000277000000   size 0x0000000000200000
+    */
 	for_each_memblock(memory, reg) {
-		int nid = memblock_get_region_node(reg);
+		int nid = memblock_get_region_node(reg);  // tx2 固定返回 0   nid = 0
 
 		memory_present(nid, memblock_region_memory_base_pfn(reg),
 				memblock_region_memory_end_pfn(reg));
@@ -192,6 +209,8 @@ static int __init early_mem(char *p)
 }
 early_param("mem", early_mem);
 
+//  memblock 里的内存，有部分会在 map_mem 里映射
+// setup_arch -> arm64_memblock_init
 void __init arm64_memblock_init(void)
 {
 	const s64 linear_region_size = -(s64)PAGE_OFFSET;
@@ -306,26 +325,28 @@ void __init arm64_memblock_init(void)
 
 	memblock_allow_resize();
 }
-
+// setup_arch -> bootmem_init
 void __init bootmem_init(void)
 {
-	unsigned long min, max;
+	unsigned long min, max;  // 最小和最大页帧号
 
 	min = PFN_UP(memblock_start_of_DRAM());
 	max = PFN_DOWN(memblock_end_of_DRAM());
+
+    // tx2 : min 0x0000000000080000  max 0x0000000000277200
 
 	early_memtest(min << PAGE_SHIFT, max << PAGE_SHIFT);
 
 	max_pfn = max_low_pfn = max;
 
-	arm64_numa_init();
+	arm64_numa_init(); // tx2 里 没有 numa 系统，可以忽略这个函数
 	/*
 	 * Sparsemem tries to allocate bootmem in memory_present(), so must be
 	 * done after the fixed reservations.
 	 */
-	arm64_memory_present();
+	arm64_memory_present();  // 记录哪些物理段内存是存在的．
 
-	sparse_init();
+	sparse_init();  // 关联 section 与 page
 	zone_sizes_init(min, max);
 
 	memblock_dump_all();
@@ -404,9 +425,10 @@ static void __init free_unused_memmap(void)
  * is free.  This is done after various parts of the system have claimed their
  * memory after the kernel image.
  */
+// mm_init -> mem_init
 void __init mem_init(void)
 {
-#ifdef CONFIG_SWIOTLB
+#ifdef CONFIG_SWIOTLB   // tx2 没有定义 CONFIG_SWIOTLB
 	if (swiotlb_force == SWIOTLB_FORCE ||
 	    max_pfn > (arm64_dma_phys_limit >> PAGE_SHIFT))
 		swiotlb_init(1);
@@ -416,8 +438,8 @@ void __init mem_init(void)
 
 	set_max_mapnr(pfn_to_page(max_pfn) - mem_map);
 
-#ifndef CONFIG_SPARSEMEM_VMEMMAP
-	free_unused_memmap();
+#ifndef CONFIG_SPARSEMEM_VMEMMAP  // tx2 定义了 CONFIG_SPARSEMEM_VMEMMAP
+	free_unused_memmap();   // tx2 不会调用本函数
 #endif
 	/* this will put all unused low memory onto the freelists */
 	free_all_bootmem();

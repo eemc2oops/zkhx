@@ -17,8 +17,8 @@
 #define __ASM_SPARSEMEM_H
 
 #ifdef CONFIG_SPARSEMEM
-#define MAX_PHYSMEM_BITS	48
-#define SECTION_SIZE_BITS	30
+#define MAX_PHYSMEM_BITS	48     // arm64 支持的最大物理内存位数
+#define SECTION_SIZE_BITS	30    // 1G 一个section表示1G的物理内存
 #endif
 
 #endif

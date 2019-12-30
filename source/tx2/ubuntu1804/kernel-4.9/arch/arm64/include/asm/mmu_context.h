@@ -43,14 +43,17 @@ static inline void contextidr_thread_switch(struct task_struct *next)
 /*
  * Set TTBR0 to empty_zero_page. No translations will be possible via TTBR0.
  */
+// cpu_uninstall_idmap -> cpu_set_reserved_ttbr0
+// cpu_install_idmap -> cpu_set_reserved_ttbr0
 static inline void cpu_set_reserved_ttbr0(void)
 {
 	unsigned long ttbr = __pa_symbol(empty_zero_page);
 
-	write_sysreg(ttbr, ttbr0_el1);
+	write_sysreg(ttbr, ttbr0_el1);  // 清掉用低地址的转换表，
+	                                // 低地址转换表在系统启动阶段，进入C语言入口前使用．
 	isb();
 }
-
+// cpu_uninstall_idmap -> cpu_switch_mm
 static inline void cpu_switch_mm(pgd_t *pgd, struct mm_struct *mm)
 {
 	BUG_ON(pgd == swapper_pg_dir);
@@ -103,6 +106,8 @@ static inline void __cpu_set_tcr_t0sz(unsigned long t0sz)
  * which should not be installed in TTBR0_EL1. In this case we can leave the
  * reserved page tables in place.
  */
+// setup_arch -> cpu_uninstall_idmap
+// cpu_replace_ttbr1 -> cpu_uninstall_idmap
 static inline void cpu_uninstall_idmap(void)
 {
 	struct mm_struct *mm = current->active_mm;
@@ -114,7 +119,7 @@ static inline void cpu_uninstall_idmap(void)
 	if (mm != &init_mm && !system_uses_ttbr0_pan())
 		cpu_switch_mm(mm->pgd, mm);
 }
-
+// cpu_replace_ttbr1 -> cpu_install_idmap
 static inline void cpu_install_idmap(void)
 {
 	cpu_set_reserved_ttbr0();
@@ -128,6 +133,7 @@ static inline void cpu_install_idmap(void)
  * Atomically replaces the active TTBR1_EL1 PGD with a new VA-compatible PGD,
  * avoiding the possibility of conflicting TLB entries being allocated.
  */
+// paging_init -> cpu_replace_ttbr1
 static inline void __nocfi cpu_replace_ttbr1(pgd_t *pgd)
 {
 	typedef void (ttbr_replace_func)(phys_addr_t);
@@ -136,11 +142,13 @@ static inline void __nocfi cpu_replace_ttbr1(pgd_t *pgd)
 
 	phys_addr_t pgd_phys = virt_to_phys(pgd);
 
-	replace_phys = (void *)__pa_symbol(idmap_cpu_replace_ttbr1);
+	replace_phys = (void *)__pa_symbol(idmap_cpu_replace_ttbr1); // arch/arm64/mm/proc.S 里定义 idmap_cpu_replace_ttbr1
+	                                                            // idmap_cpu_replace_ttbr1 在 .idmap.text　里
+	                                                            // .idmap.text 段在内存的低端地址
 
-	cpu_install_idmap();
-	replace_phys(pgd_phys);
-	cpu_uninstall_idmap();
+	cpu_install_idmap();  // 添加低端地址的映射．因为　replace_phys　函数在低端地址
+	replace_phys(pgd_phys);  // 把 pgd 写入 ttbr1.完成内核映射切换
+	cpu_uninstall_idmap();  // 去掉低端地址映射
 }
 
 /*

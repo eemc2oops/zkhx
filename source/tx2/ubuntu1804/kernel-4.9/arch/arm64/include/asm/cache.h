@@ -19,7 +19,7 @@
 #include <asm/cachetype.h>
 
 #define L1_CACHE_SHIFT		6
-#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
+#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT) // 64
 
 /*
  * Memory returned by kmalloc() may be used for DMA, so we must make
@@ -28,7 +28,7 @@
  * cache before the transfer is done, causing old data to be seen by
  * the CPU.
  */
-#define ARCH_DMA_MINALIGN	L1_CACHE_BYTES
+#define ARCH_DMA_MINALIGN	L1_CACHE_BYTES  // tx2 : 64
 
 #ifndef __ASSEMBLY__
 

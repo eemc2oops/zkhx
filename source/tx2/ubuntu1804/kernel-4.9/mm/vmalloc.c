@@ -1192,7 +1192,9 @@ void *vm_map_ram(struct page **pages, unsigned int count, int node, pgprot_t pro
 }
 EXPORT_SYMBOL(vm_map_ram);
 
-static struct vm_struct *vmlist __initdata;
+// static struct vm_struct *vmlist __initdata; 源码是这一行，为了阅读方便，改成下一行
+static struct vm_struct *vmlist;
+
 /**
  * vm_area_add_early - add vmap area early during boot
  * @vm: vm_struct to add
@@ -1203,6 +1205,7 @@ static struct vm_struct *vmlist __initdata;
  *
  * DO NOT USE THIS FUNCTION UNLESS YOU KNOW WHAT YOU'RE DOING.
  */
+// map_kernel_segment -> vm_area_add_early
 void __init vm_area_add_early(struct vm_struct *vm)
 {
 	struct vm_struct *tmp, **p;

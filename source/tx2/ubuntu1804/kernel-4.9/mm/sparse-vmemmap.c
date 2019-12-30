@@ -247,18 +247,19 @@ int __meminit vmemmap_populate_basepages(unsigned long start,
 
 	return 0;
 }
-
-struct page * __meminit sparse_mem_map_populate(unsigned long pnum, int nid)
+// sparse_early_mem_map_alloc -> sparse_mem_map_populate
+struct page * __meminit sparse_mem_map_populate(unsigned long pnum, int nid) // pnum 表示 section id
 {
 	unsigned long start;
 	unsigned long end;
 	struct page *map;
 
-	map = pfn_to_page(pnum * PAGES_PER_SECTION);
-	start = (unsigned long)map;
-	end = (unsigned long)(map + PAGES_PER_SECTION);
+	map = pfn_to_page(pnum * PAGES_PER_SECTION);  // pnum * PAGES_PER_SECTION 表示第section id 表示的物理内存的起始页id
+	start = (unsigned long)map;    // pnum 表示的　section 里对应的第一个 page
+	end = (unsigned long)(map + PAGES_PER_SECTION);   // pnum 表示的 section 里对应的最后一个　page
+	                                           // 保存 page 结构的空间是连续分配的
 
-	if (vmemmap_populate(start, end, nid))
+	if (vmemmap_populate(start, end, nid)) // 对 page 结构的空间做映射
 		return NULL;
 
 	return map;

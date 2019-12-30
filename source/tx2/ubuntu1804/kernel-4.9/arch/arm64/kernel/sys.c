@@ -59,6 +59,8 @@ asmlinkage long sys_rt_sigreturn_wrapper(void);
  * The sys_call_table array must be 4K aligned to be accessible from
  * kernel/entry.S.
  */
+// 跟据包含关系 arm64 系统调用定义在 include/uapi/asm-generic/unistd.h
+// 由 kernel/entry.S el0_svc  执行系统调用
 void * const sys_call_table[__NR_syscalls] __aligned(4096) = {
 	[0 ... __NR_syscalls - 1] = sys_ni_syscall,
 #include <asm/unistd.h>

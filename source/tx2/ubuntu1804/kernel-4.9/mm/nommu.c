@@ -12,7 +12,7 @@
  *  Copyright (c) 2002      Greg Ungerer <gerg@snapgear.com>
  *  Copyright (c) 2007-2010 Paul Mundt <lethal@linux-sh.org>
  */
-
+// tx2 没有使用本文件
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/export.h>

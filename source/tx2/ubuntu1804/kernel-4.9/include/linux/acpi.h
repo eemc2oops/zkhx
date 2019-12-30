@@ -32,7 +32,7 @@
 #endif
 #include <acpi/acpi.h>
 
-#ifdef	CONFIG_ACPI
+#ifdef	CONFIG_ACPI  // tx2 没有定义 CONFIG_ACPI
 
 #include <linux/list.h>
 #include <linux/mod_devicetable.h>

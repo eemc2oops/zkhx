@@ -110,6 +110,7 @@ asmlinkage void __init kasan_early_init(void)
 /*
  * Copy the current shadow region into a new pgdir.
  */
+// map_kernel -> kasan_copy_shadow
 void __init kasan_copy_shadow(pgd_t *pgdir)
 {
 	pgd_t *pgd, *pgd_new, *pgd_end;

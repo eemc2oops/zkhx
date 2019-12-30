@@ -1074,6 +1074,7 @@ EXPORT_SYMBOL_GPL(__alloc_percpu_gfp);
  *
  * Equivalent to __alloc_percpu_gfp(size, align, %GFP_KERNEL).
  */
+// alloc_kmem_cache_cpus -> __alloc_percpu
 void __percpu *__alloc_percpu(size_t size, size_t align)
 {
 	return pcpu_alloc(size, align, false, GFP_KERNEL);

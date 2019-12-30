@@ -33,6 +33,36 @@
  * physical memory with fixmap indices.
  *
  */
+/*
+__set_fixmap
+
+
+fixed虚拟地址布局，按页分，枚举值表示fix地址的下标，
+通过 __fix_to_virt 进行下标转换，可以计算出虚拟地址的实际地址
+
++-----------------------------------+-------+
+|    FIX_HOLE                       | 0页    |
++-----------------------------------+-------+
+|    FIX_FDT_END                    | 1页    |
++-----------------------------------+-------+
+|    FIX_FDT                        | x页    |
++-----------------------------------+-------+
+|    FIX_EARLYCON_MEM_BASE          | x+1页  |
++-----------------------------------+-------+
+|    FIX_TEXT_POKE0                 | x+2页  |
++-----------------------------------+-------+
+|    ..............                 | n页    |
++-----------------------------------+-------+
+|    FIX_PTE                        | n+1页  |
++-----------------------------------+-------+
+|    FIX_PMD                        | n+2页  |
++-----------------------------------+-------+
+|    FIX_PUD                        | n+3页  |
++-----------------------------------+-------+
+|    FIX_PGD                        | n+4页  |
++-----------------------------------+-------+
+
+*/
 enum fixed_addresses {
 	FIX_HOLE,
 
@@ -47,7 +77,7 @@ enum fixed_addresses {
 	 */
 #define FIX_FDT_SIZE		(MAX_FDT_SIZE + SZ_2M)
 	FIX_FDT_END,
-	FIX_FDT = FIX_FDT_END + FIX_FDT_SIZE / PAGE_SIZE - 1,
+	FIX_FDT = FIX_FDT_END + FIX_FDT_SIZE / PAGE_SIZE - 1,     // dtb　起始虚拟地址 __fixmap_remap_fdt
 
 	FIX_EARLYCON_MEM_BASE,
 	FIX_TEXT_POKE0,
@@ -83,7 +113,7 @@ enum fixed_addresses {
 };
 
 #define FIXADDR_SIZE	(__end_of_permanent_fixed_addresses << PAGE_SHIFT)
-#define FIXADDR_START	(FIXADDR_TOP - FIXADDR_SIZE)
+#define FIXADDR_START	(FIXADDR_TOP - FIXADDR_SIZE)     // fixmap    early_fixmap_init 里映射
 
 #define FIXMAP_PAGE_IO     __pgprot(PROT_DEVICE_nGnRE)
 

@@ -390,7 +390,8 @@ static u32 clear_idx;
 /* record buffer */
 #define LOG_ALIGN __alignof__(struct printk_log)
 #define __LOG_BUF_LEN (1 << CONFIG_LOG_BUF_SHIFT)
-static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
+// static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN); 源码定义这一行，为走读方便，改成下一行
+static char __log_buf[__LOG_BUF_LEN];
 static char *log_buf = __log_buf;
 static u32 log_buf_len = __LOG_BUF_LEN;
 
@@ -1060,7 +1061,7 @@ static void __init log_buf_add_cpu(void)
 #else /* !CONFIG_SMP */
 static inline void log_buf_add_cpu(void) {}
 #endif /* CONFIG_SMP */
-
+// start_kernel -> setup_log_buf
 void __init setup_log_buf(int early)
 {
 	unsigned long flags;

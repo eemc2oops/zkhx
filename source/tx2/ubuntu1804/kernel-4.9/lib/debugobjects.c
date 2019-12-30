@@ -33,13 +33,16 @@ struct debug_bucket {
 	raw_spinlock_t		lock;
 };
 
-static struct debug_bucket	obj_hash[ODEBUG_HASH_SIZE];
+static struct debug_bucket	obj_hash[ODEBUG_HASH_SIZE];  // debug_objects_early_init 里初始化
 
-static struct debug_obj		obj_static_pool[ODEBUG_POOL_SIZE] __initdata;
+// static struct debug_obj		obj_static_pool[ODEBUG_POOL_SIZE] __initdata;     源代码定义
+// 方便si识别修改成以下定义
+static struct debug_obj		obj_static_pool[ODEBUG_POOL_SIZE];   // debug_objects_early_init 里添加到 obj_pool 里
 
 static DEFINE_RAW_SPINLOCK(pool_lock);
 
-static HLIST_HEAD(obj_pool);
+// static HLIST_HEAD(obj_pool);  源码　方便走读代码更改
+struct hlist_head obj_pool = {  .first = NULL };   // debug_objects_early_init 里给 ojb_pool 里添加数据
 
 static int			obj_pool_min_free = ODEBUG_POOL_SIZE;
 static int			obj_pool_free = ODEBUG_POOL_SIZE;
@@ -1029,6 +1032,7 @@ static inline void debug_objects_selftest(void) { }
  * the static object pool objects into the poll list. After this call
  * the object tracker is fully operational.
  */
+// start_kernel -> debug_objects_early_init
 void __init debug_objects_early_init(void)
 {
 	int i;

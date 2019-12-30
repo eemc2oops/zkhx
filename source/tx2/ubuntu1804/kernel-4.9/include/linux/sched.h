@@ -1633,15 +1633,16 @@ struct tlbflush_unmap_batch {
 };
 
 struct task_struct {
-#ifdef CONFIG_THREAD_INFO_IN_TASK
+#ifdef CONFIG_THREAD_INFO_IN_TASK  // tx2 定义了这个宏
 	/*
 	 * For reasons of header soup (see current_thread_info()), this
 	 * must be the first element of task_struct.
 	 */
+	 // 定义在 arch/arm64/include/asm/thread_info.h
 	struct thread_info thread_info;
 #endif
 	volatile long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
-	void *stack;
+	void *stack;      // init_task 的 stack 指向 init_thread_union.stack
 	atomic_t usage;
 	unsigned int flags;	/* per process flags, defined below */
 	unsigned int ptrace;
@@ -1966,7 +1967,7 @@ struct task_struct {
 #endif
 #ifdef CONFIG_CGROUPS
 	/* Control Group info protected by css_set_lock */
-	struct css_set __rcu *cgroups;
+	struct css_set __rcu *cgroups;    // init_task 本字段初始化成 init_css_set  cgroup_init_early 里完成
 	/* cg_list protected by css_set_lock and tsk->alloc_lock */
 	struct list_head cg_list;
 #endif
@@ -2811,8 +2812,8 @@ extern void ia64_set_curr_task(int cpu, struct task_struct *p);
 void yield(void);
 
 union thread_union {
-#ifndef CONFIG_THREAD_INFO_IN_TASK
-	struct thread_info thread_info;
+#ifndef CONFIG_THREAD_INFO_IN_TASK   // tx2 定义了 本宏
+	struct thread_info thread_info;  // tx2 不定义这个变量
 #endif
 	unsigned long stack[THREAD_SIZE/sizeof(long)];  // 定义的栈大小
 };
@@ -2827,7 +2828,7 @@ static inline int kstack_end(void *addr)
 }
 #endif
 
-extern union thread_union init_thread_union;
+extern union thread_union init_thread_union;   // 定义在 kernel-4.9/init/init_task.c 里
 extern struct task_struct init_task;
 
 extern struct   mm_struct init_mm;
@@ -3319,7 +3320,7 @@ static inline void threadgroup_change_end(struct task_struct *tsk)
 	cgroup_threadgroup_change_end(tsk);
 }
 
-#ifdef CONFIG_THREAD_INFO_IN_TASK
+#ifdef CONFIG_THREAD_INFO_IN_TASK   // tx2 定义了这个宏
 
 static inline struct thread_info *task_thread_info(struct task_struct *task)
 {
@@ -3337,7 +3338,7 @@ static inline void *task_stack_page(const struct task_struct *task)
 }
 
 #define setup_thread_stack(new,old)	do { } while(0)
-
+// set_task_stack_end_magic -> end_of_stack
 static inline unsigned long *end_of_stack(const struct task_struct *task)
 {
 	return task->stack;

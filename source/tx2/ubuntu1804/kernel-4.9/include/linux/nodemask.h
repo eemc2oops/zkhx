@@ -403,7 +403,7 @@ enum node_states {
 
 extern nodemask_t node_states[NR_NODE_STATES];
 
-#if MAX_NUMNODES > 1
+#if MAX_NUMNODES > 1   // tx2 : MAX_NUMNODES  = 1
 static inline int node_state(int node, enum node_states state)
 {
 	return node_isset(node, node_states[state]);
@@ -472,7 +472,7 @@ static inline int num_node_state(enum node_states state)
 {
 	return 1;
 }
-
+// init_kmem_cache_nodes -> for_each_node_state
 #define for_each_node_state(node, __state) \
 	for ( (node) = 0; (node) == 0; (node) = 1)
 

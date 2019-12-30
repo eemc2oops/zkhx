@@ -407,6 +407,7 @@ bool __weak arch_find_n_match_cpu_physical_id(struct device_node *cpun,
  * Returns a node pointer for the logical cpu with refcount incremented, use
  * of_node_put() on it when done. Returns NULL if not found.
  */
+// cpu_read_enable_method -> of_get_cpu_node
 struct device_node *of_get_cpu_node(int cpu, unsigned int *thread)
 {
 	struct device_node *cpun;

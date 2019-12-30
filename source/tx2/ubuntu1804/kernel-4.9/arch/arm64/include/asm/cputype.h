@@ -125,12 +125,65 @@
  */
 static inline u32 __attribute_const__ read_cpuid_id(void)
 {
-	return read_cpuid(MIDR_EL1);
+	return read_cpuid(MIDR_EL1);    /*
+                                	    Provides identification information for the processor, 
+                                	    including an implementer code for the device and a device ID number.
+                                	    
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [3:0]   |  Revision      |  Indicates the minor revision number of the processor. 
+                	    |          |                |  This is the minor revision number n in the pn part of 
+                	    |          |                |       the rnpn description of the product revision status
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [15:4]  |  Primary part  |   Indicates the primary part number.
+                	    |          |  number        |
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [19:16] |  Architecture  |   Indicates the architecture code. 
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [23:20] |  Variant       |   Indicates the variant number of the processor. 
+                	    |          |                |   This is the major revision number n in the rn part of 
+                	    |          |                |       the rnpn description of the product revision status
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [31:24] |  Implementer   |   Indicates the implementer code
+                	    +----------+----------------+--------------------------------------------------------------------------
+	                                */
 }
-
+// smp_setup_processor_id -> read_cpuid_mpidr
 static inline u64 __attribute_const__ read_cpuid_mpidr(void)
 {
-	return read_cpuid(MPIDR_EL1);
+	return read_cpuid(MPIDR_EL1);   /*
+                                	    Provides an additional processor identification mechanism for scheduling 
+                                	    purposes in a multiprocessor system.
+                                        EDDEVAFF0 is a read-only copy of MPIDR_EL1[31:0] accessible 
+                                        from the external debug interface
+                                        
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [1:0]   |  CPU ID        |  Indicates the processor number in the Cortex-A57 MPCore device.
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [7:2]   |  Reserved      |
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [15:8]  |  Cluster ID    |  Indicates the value read in at reset, 
+                	    |          |                |    from the CLUSTERIDAFF1 configuration signal. 
+                	    |          |    Aff1        |  It identifies an Cortex-A57 MPCore device in a system with more than 
+                	    |          |                |    one Cortex-A57 MPCore device present.
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [23:16] |  Cluster ID    |  Indicates the value read in at reset, 
+                	    |          |                |    from the CLUSTERIDAFF2 configuration signal. 
+                	    |          |    Aff2        |  It identifies an Cortex-A57 MPCore device in a system with more than 
+                	    |          |                |    one Cortex-A57 MPCore device present.
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [24]    |       MT       |  Indicates whether the lowest level of affinity consists of logical processors 
+                	    |          |                |   that are implemented using a multi-threading type approach. 
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [29:25] |  Reserved      |
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [30]    |       U        |  Indicates a uniprocessor system, 
+                	    |          |                |    as distinct from processor 0 in a multiprocessor system
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [31]    |   Reserved     |
+                	    +----------+----------------+--------------------------------------------------------------------------
+                	    |  [32:63] |   Reserved     |  
+                	    +----------+----------------+--------------------------------------------------------------------------
+	                                */
 }
 
 static inline unsigned int __attribute_const__ read_cpuid_implementor(void)

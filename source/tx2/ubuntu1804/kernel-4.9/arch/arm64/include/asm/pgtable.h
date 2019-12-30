@@ -34,7 +34,8 @@
 #define VMALLOC_START		(MODULES_END)
 #define VMALLOC_END		(PAGE_OFFSET - PUD_SIZE - VMEMMAP_SIZE - SZ_64K)
 
-#define vmemmap			((struct page *)VMEMMAP_START - (memstart_addr >> PAGE_SHIFT))
+#define vmemmap			((struct page *)VMEMMAP_START - (memstart_addr >> PAGE_SHIFT))   // tx2 : 0xffffffbefe000000
+                                                                                        // tx2 里用于保存 page 结构的起始地址　详见 __pfn_to_page
 
 #define FIRST_USER_ADDRESS	0UL
 
@@ -195,7 +196,7 @@ static inline pmd_t pmd_mkcont(pmd_t pmd)
 {
 	return __pmd(pmd_val(pmd) | PMD_SECT_CONT);
 }
-
+// alloc_init_pte -> set_pte
 static inline void set_pte(pte_t *ptep, pte_t pte)
 {
 	*ptep = pte;
@@ -556,7 +557,10 @@ static inline unsigned long pgd_page_vaddr(pgd_t pgd)
 #define pud_offset_kimg(dir,addr)	((pud_t *)__phys_to_kimg(pud_offset_phys((dir), (addr))))
 
 #else
-
+// 四级转换
+// pgd , pud , pmd , pte
+// 三级转换
+// pgd , pmd , pte
 #define pgd_page_paddr(pgd)	({ BUILD_BUG(); 0;})
 
 /* Match pud_offset folding in <asm/generic/pgtable-nopud.h> */
@@ -564,7 +568,9 @@ static inline unsigned long pgd_page_vaddr(pgd_t pgd)
 #define pud_set_fixmap_offset(pgdp, addr)	((pud_t *)pgdp)
 #define pud_clear_fixmap()
 
-#define pud_offset_kimg(dir,addr)	((pud_t *)dir)
+#define pud_offset_kimg(dir,addr)	((pud_t *)dir)  // 查找 pud 表项
+                                                    // dir 表示 pud 表基址，同时也是 pgd 的表项
+                                                    // 用这个宏表示 pgd,pud 采用同一个表
 
 #endif  /* CONFIG_PGTABLE_LEVELS > 3 */
 
@@ -573,12 +579,12 @@ static inline unsigned long pgd_page_vaddr(pgd_t pgd)
 /* to find an entry in a page-table-directory */
 #define pgd_index(addr)		(((addr) >> PGDIR_SHIFT) & (PTRS_PER_PGD - 1))
 
-#define pgd_offset_raw(pgd, addr)	((pgd) + pgd_index(addr))
+#define pgd_offset_raw(pgd, addr)	((pgd) + pgd_index(addr))  // 查找 addr 在内核 pgd (L0转换表) 对应的表项的地址
 
 #define pgd_offset(mm, addr)	(pgd_offset_raw((mm)->pgd, (addr)))
 
 /* to find an entry in a kernel page-table-directory */
-#define pgd_offset_k(addr)	pgd_offset(&init_mm, addr)
+#define pgd_offset_k(addr)	pgd_offset(&init_mm, addr)    // 查找 addr 在 init_mm 对应的 pgd (L0转换表) 对应的表项的地址
 
 #define pgd_set_fixmap(addr)	((pgd_t *)set_fixmap_offset(FIX_PGD, addr))
 #define pgd_clear_fixmap()	clear_fixmap(FIX_PGD)
@@ -720,9 +726,18 @@ static inline void pmdp_set_wrprotect(struct mm_struct *mm,
 #endif
 #endif	/* CONFIG_ARM64_HW_AFDBM */
 
-extern pgd_t swapper_pg_dir[PTRS_PER_PGD];
-extern pgd_t idmap_pg_dir[PTRS_PER_PGD];
-extern pgd_t tramp_pg_dir[PTRS_PER_PGD];
+// extern pgd_t swapper_pg_dir[PTRS_PER_PGD]; 源码定义是这一行，走读方便改成下一行．
+pgd_t swapper_pg_dir[PTRS_PER_PGD];  // arch/arm64/kernel/vmlinux.lds.S 里定义
+                                    // tx2 : 在 vmlinux.lds.S 里定义的 swapper_pg_dir 大小是 8K ．保存了 L0, L1 的转换表
+                                    //       此处只定义了 4K ，一个页，因为在 paging_init 以后，只把这里当做 L0 转换表使用，后面的 4K 释放了
+// extern pgd_t idmap_pg_dir[PTRS_PER_PGD]; 源码定义是这一行，走读方便改成下一行．
+pgd_t idmap_pg_dir[PTRS_PER_PGD];    // arch/arm64/kernel/vmlinux.lds.S 里定义
+                                    // 用来保存内核初始化阶段必须的 .idmap.text 段的代码对应的 转换表，
+                                    // .idmap.text 代码放在低端地址
+                                    // idmap_pg_dir 会写入到 ttbr0_el1 里
+                                    // cpu_install_idmap 里切换本段
+// extern pgd_t tramp_pg_dir[PTRS_PER_PGD]; 源码定义是这一行，走读方便改成下一行．
+pgd_t tramp_pg_dir[PTRS_PER_PGD];    // arm64/kernel/vmlinux.lds.S 里定义
 
 /*
  * Encode and decode a swap entry:

@@ -288,7 +288,7 @@ struct per_cpu_nodestat {
 #endif /* !__GENERATING_BOUNDS.H */
 
 enum zone_type {
-#ifdef CONFIG_ZONE_DMA
+#ifdef CONFIG_ZONE_DMA  // tx2 定义了 CONFIG_ZONE_DMA
 	/*
 	 * ZONE_DMA is used when there are devices that are not able
 	 * to do DMA to all of addressable memory (ZONE_NORMAL). Then we
@@ -342,8 +342,8 @@ enum zone_type {
 
 };
 
-#ifndef __GENERATING_BOUNDS_H
-
+#ifndef __GENERATING_BOUNDS_H  // tx2 没有定义 __GENERATING_BOUNDS_H
+                                // zone 是在这里定义的
 struct zone {
 	/* Read-mostly fields */
 
@@ -421,7 +421,7 @@ struct zone {
 	 * adjust_managed_page_count() should be used instead of directly
 	 * touching zone->managed_pages and totalram_pages.
 	 */
-	unsigned long		managed_pages;
+	unsigned long		managed_pages;   // reset_node_managed_pages 里清0
 	unsigned long		spanned_pages;
 	unsigned long		present_pages;
 
@@ -599,16 +599,16 @@ typedef struct pglist_data {
 	struct zone node_zones[MAX_NR_ZONES];
 	struct zonelist node_zonelists[MAX_ZONELISTS];
 	int nr_zones;
-#ifdef CONFIG_FLAT_NODE_MEM_MAP	/* means !SPARSEMEM */
+#ifdef CONFIG_FLAT_NODE_MEM_MAP	/* means !SPARSEMEM */   // tx2 没有定义 CONFIG_FLAT_NODE_MEM_MAP
 	struct page *node_mem_map;
-#ifdef CONFIG_PAGE_EXTENSION
+#ifdef CONFIG_PAGE_EXTENSION  // tx2 没有定义 CONFIG_PAGE_EXTENSION
 	struct page_ext *node_page_ext;
 #endif
 #endif
-#ifndef CONFIG_NO_BOOTMEM
-	struct bootmem_data *bdata;
+#ifndef CONFIG_NO_BOOTMEM   // tx2  定义了 CONFIG_NO_BOOTMEM
+	struct bootmem_data *bdata; // tx2 没有这个字段
 #endif
-#ifdef CONFIG_MEMORY_HOTPLUG
+#ifdef CONFIG_MEMORY_HOTPLUG  // tx2  定义了 CONFIG_MEMORY_HOTPLUG
 	/*
 	 * Must be held any time you expect node_start_pfn, node_present_pages
 	 * or node_spanned_pages stay constant.  Holding this will also
@@ -619,7 +619,7 @@ typedef struct pglist_data {
 	 *
 	 * Nests above zone->lock and zone->span_seqlock
 	 */
-	spinlock_t node_size_lock;
+	spinlock_t node_size_lock;   // pgdat_resize_init 里初始化
 #endif
 	unsigned long node_start_pfn;
 	unsigned long node_present_pages; /* total number of physical pages */
@@ -680,7 +680,7 @@ typedef struct pglist_data {
 #endif /* CONFIG_DEFERRED_STRUCT_PAGE_INIT */
 
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-	spinlock_t split_queue_lock;
+	spinlock_t split_queue_lock;   // free_area_init_core
 	struct list_head split_queue;
 	unsigned long split_queue_len;
 #endif
@@ -753,11 +753,12 @@ static inline bool is_dev_zone(const struct zone *zone)
 }
 #endif
 
-#ifndef CONFIG_NEED_MULTIPLE_NODES
+#ifndef CONFIG_NEED_MULTIPLE_NODES  // tx2 没有定义 CONFIG_NEED_MULTIPLE_NODES
 
 extern struct pglist_data contig_page_data;
-#define NODE_DATA(nid)		(&contig_page_data)
-#define NODE_MEM_MAP(nid)	mem_map
+#define NODE_DATA(nid)		(&contig_page_data)     // tx2 使用这个宏
+                                                    // sparse_early_usemaps_alloc_node
+#define NODE_MEM_MAP(nid)	mem_map                 // tx2 使用这个宏
 #endif
 
 #include <linux/memory_hotplug.h>
@@ -1039,8 +1040,9 @@ static inline struct zoneref *first_zones_zonelist(struct zonelist *zonelist,
 #include <asm/sparsemem.h>
 #endif
 
-#if !defined(CONFIG_HAVE_ARCH_EARLY_PFN_TO_NID) && \
-	!defined(CONFIG_HAVE_MEMBLOCK_NODE_MAP)
+#if !defined(CONFIG_HAVE_ARCH_EARLY_PFN_TO_NID) && \      // tx2 没有定义 CONFIG_HAVE_ARCH_EARLY_PFN_TO_NID
+	!defined(CONFIG_HAVE_MEMBLOCK_NODE_MAP)             // tx2 没有定义 CONFIG_HAVE_MEMBLOCK_NODE_MAP
+// sparse_early_usemaps_alloc_pgdat_section -> early_pfn_to_nid
 static inline unsigned long early_pfn_to_nid(unsigned long pfn)
 {
 	return 0;
@@ -1051,7 +1053,7 @@ static inline unsigned long early_pfn_to_nid(unsigned long pfn)
 #define pfn_to_nid(pfn)		(0)
 #endif
 
-#ifdef CONFIG_SPARSEMEM
+#ifdef CONFIG_SPARSEMEM   // tx2 定义了这个宏
 
 /*
  * SECTION_SHIFT    		#bits space required to store a section #
@@ -1059,13 +1061,18 @@ static inline unsigned long early_pfn_to_nid(unsigned long pfn)
  * PA_SECTION_SHIFT		physical address to/from section number
  * PFN_SECTION_SHIFT		pfn to/from section number
  */
-#define PA_SECTION_SHIFT	(SECTION_SIZE_BITS)
-#define PFN_SECTION_SHIFT	(SECTION_SIZE_BITS - PAGE_SHIFT)
+#define PA_SECTION_SHIFT	(SECTION_SIZE_BITS)    // tx2 : 30
+#define PFN_SECTION_SHIFT	(SECTION_SIZE_BITS - PAGE_SHIFT)    // tx2 : 18
 
-#define NR_MEM_SECTIONS		(1UL << SECTIONS_SHIFT)
+#define NR_MEM_SECTIONS		(1UL << SECTIONS_SHIFT)    // 一共有多少个section　
+                                                        // 每个section表示1G的物理空间 30bit，arm64最大有48bit的物理空间
+                                                        // 所以，arm64 需要 18bit 即 256K 个section
+                                                        // tx2 : 0x‭40000‬  256K 
 
-#define PAGES_PER_SECTION       (1UL << PFN_SECTION_SHIFT)
-#define PAGE_SECTION_MASK	(~(PAGES_PER_SECTION-1))
+#define PAGES_PER_SECTION       (1UL << PFN_SECTION_SHIFT)  // 每个section里有多少个page　　( 1 << 18 )
+                                                            // 1个section表示1G空间，tx2里一个page是4K
+                                                            // tx2 : 0x40000   256K
+#define PAGE_SECTION_MASK	(~(PAGES_PER_SECTION-1))   // tx2 : 0xfffffffffffc0000
 
 #define SECTION_BLOCKFLAGS_BITS \
 	((1UL << (PFN_SECTION_SHIFT - pageblock_order)) * NR_PAGEBLOCK_BITS)
@@ -1074,14 +1081,17 @@ static inline unsigned long early_pfn_to_nid(unsigned long pfn)
 #error Allocator MAX_ORDER exceeds SECTION_SIZE
 #endif
 
-#define pfn_to_section_nr(pfn) ((pfn) >> PFN_SECTION_SHIFT)
-#define section_nr_to_pfn(sec) ((sec) << PFN_SECTION_SHIFT)
+#define pfn_to_section_nr(pfn) ((pfn) >> PFN_SECTION_SHIFT)  // pfn >> 18      查找页帧号(pfn)对应的section id
+#define section_nr_to_pfn(sec) ((sec) << PFN_SECTION_SHIFT)  // sec << 18      查找section id对应的起始页帧号(pfn)
 
 #define SECTION_ALIGN_UP(pfn)	(((pfn) + PAGES_PER_SECTION - 1) & PAGE_SECTION_MASK)
 #define SECTION_ALIGN_DOWN(pfn)	((pfn) & PAGE_SECTION_MASK)
 
 struct page;
 struct page_ext;
+// 保存物理内存的对应页是否存在的结构
+// 一个mem_section结构对应１G的物理内存，是第几个物理内存，由在 mem_section 变量的 root 和 nr 决定
+// tx2 : sizeof (mem_section) = 16
 struct mem_section {
 	/*
 	 * This is, logically, a pointer to an array of struct
@@ -1095,11 +1105,15 @@ struct mem_section {
 	 * Making it a UL at least makes someone do a cast
 	 * before using it wrong.
 	 */
-	unsigned long section_mem_map;
+	unsigned long section_mem_map;  // 0:1 bit 表示状态　
+	                                // memory_present 赋 SECTION_MARKED_PRESENT  表示本段内存已被标记
+	                                // sparse_init_one_section 赋 SECTION_HAS_MEM_MAP 表示本段内存已生成对应的 page 结构
+	                                // 保存状态，pfn,和page地址，详见 sparse_init_one_section
 
 	/* See declaration of similar field in struct zone */
-	unsigned long *pageblock_flags;
-#ifdef CONFIG_PAGE_EXTENSION
+	unsigned long *pageblock_flags;  // sparse_init_one_section 里赋值
+	                                //  指向一个  256字节长的位表
+#ifdef CONFIG_PAGE_EXTENSION  // tx2 没有定义 CONFIG_PAGE_EXTENSION
 	/*
 	 * If SPARSEMEM, pgdat doesn't have page_ext pointer. We use
 	 * section. (see page_ext.h about this.)
@@ -1113,22 +1127,26 @@ struct mem_section {
 	 */
 };
 
-#ifdef CONFIG_SPARSEMEM_EXTREME
-#define SECTIONS_PER_ROOT       (PAGE_SIZE / sizeof (struct mem_section))
+#ifdef CONFIG_SPARSEMEM_EXTREME   // tx2 定义了 CONFIG_SPARSEMEM_EXTREME
+#define SECTIONS_PER_ROOT       (PAGE_SIZE / sizeof (struct mem_section))   // 一页里面可以保存多少个 mem_section 结构  
+                                                                            // tx2  256  : 0x100        (4096 / 16)
+                                                                            // 一个 mem_section 的大小是16字节，一页4K内存，刚好可以放 256个 section
+                                                                            // 用法　参考 memory_present
 #else
 #define SECTIONS_PER_ROOT	1
 #endif
 
 #define SECTION_NR_TO_ROOT(sec)	((sec) / SECTIONS_PER_ROOT)
-#define NR_SECTION_ROOTS	DIV_ROUND_UP(NR_MEM_SECTIONS, SECTIONS_PER_ROOT)
+#define NR_SECTION_ROOTS	DIV_ROUND_UP(NR_MEM_SECTIONS, SECTIONS_PER_ROOT)   // tx2  0x400 : 1024
 #define SECTION_ROOT_MASK	(SECTIONS_PER_ROOT - 1)
 
-#ifdef CONFIG_SPARSEMEM_EXTREME
+#ifdef CONFIG_SPARSEMEM_EXTREME   // tx2 定义了 CONFIG_SPARSEMEM_EXTREME
+// ./mm/sparse.c 里定义
 extern struct mem_section *mem_section[NR_SECTION_ROOTS];
 #else
 extern struct mem_section mem_section[NR_SECTION_ROOTS][SECTIONS_PER_ROOT];
 #endif
-
+// memory_present -> __nr_to_section
 static inline struct mem_section *__nr_to_section(unsigned long nr)
 {
 	if (!mem_section[SECTION_NR_TO_ROOT(nr)])
@@ -1143,8 +1161,9 @@ extern unsigned long usemap_size(void);
  * a little bit of information.  There should be at least
  * 3 bits here due to 32-bit alignment.
  */
-#define	SECTION_MARKED_PRESENT	(1UL<<0)
-#define SECTION_HAS_MEM_MAP	(1UL<<1)
+// mem_section.section_mem_map 低位取值
+#define	SECTION_MARKED_PRESENT	(1UL<<0)  // memory_present 赋 SECTION_MARKED_PRESENT  表示本段内存高位保存的是 nid
+#define SECTION_HAS_MEM_MAP	(1UL<<1)   // sparse_init_one_section   表示该字段高位保存的是 page 对应的信息
 #define SECTION_MAP_LAST_BIT	(1UL<<2)
 #define SECTION_MAP_MASK	(~(SECTION_MAP_LAST_BIT-1))
 #define SECTION_NID_SHIFT	2

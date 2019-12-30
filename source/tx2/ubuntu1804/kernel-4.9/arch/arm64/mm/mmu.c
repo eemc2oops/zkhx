@@ -50,7 +50,8 @@
 u64 idmap_t0sz = TCR_T0SZ(VA_BITS);   // idmap_t0sz 值在 __create_page_tables 里赋值   arch/arm64/kernel/head.s
                                       // tx2 : __create_page_tables　函数里 把地址 __idmap_text_end 存到 idmap_t0sz 里
                                       // 系统启动阶段，打开mmu前。
-                                     // 由宏 cpu_set_idmap_tcr_t0sz 调用 idmap_t0sz 
+                                      // 由宏 cpu_set_idmap_tcr_t0sz 调用 idmap_t0sz
+                                      // cpu_install_idmap 会设置 idmap_t0sz 到 TCR_T0SZ 里
 
 u64 kimage_voffset __ro_after_init;  // arch/arm64/kernel/head.s 里   __primary_switched 里赋值
 EXPORT_SYMBOL(kimage_voffset);
@@ -62,9 +63,14 @@ EXPORT_SYMBOL(kimage_voffset);
 unsigned long empty_zero_page[PAGE_SIZE / sizeof(unsigned long)] __page_aligned_bss;
 EXPORT_SYMBOL(empty_zero_page);
 
-static pte_t bm_pte[PTRS_PER_PTE] __page_aligned_bss;
-static pmd_t bm_pmd[PTRS_PER_PMD] __page_aligned_bss __maybe_unused;
-static pud_t bm_pud[PTRS_PER_PUD] __page_aligned_bss __maybe_unused;
+// early_fixmap_init 保存启动阶段的 fixmap 转换表 把 下面三级fixmap的转换表填到内核的pgd里
+// C语言启动阶段，会在这三个表里填需要映射的内核地址，
+// static pte_t bm_pte[PTRS_PER_PTE] __page_aligned_bss; 源码里的定义，为了走读方便，改成下一行定义
+static pte_t bm_pte[PTRS_PER_PTE];
+// static pmd_t bm_pmd[PTRS_PER_PMD] __page_aligned_bss __maybe_unused; 源码里的定义，为了走读方便，改成下一行定义
+static pmd_t bm_pmd[PTRS_PER_PMD];
+// static pud_t bm_pud[PTRS_PER_PUD] __page_aligned_bss __maybe_unused; 源码里的定义，为了走读方便，改成下一行定义
+static pud_t bm_pud[PTRS_PER_PUD];
 
 pgprot_t phys_mem_access_prot(struct file *file, unsigned long pfn,
 			      unsigned long size, pgprot_t vma_prot)
@@ -76,7 +82,9 @@ pgprot_t phys_mem_access_prot(struct file *file, unsigned long pfn,
 	return vma_prot;
 }
 EXPORT_SYMBOL(phys_mem_access_prot);
-
+// 从memblock里申请一个物理页，申请到的物理内存没有映射到虚拟地址空间
+// 申请到的物理页，会临时映射到fixmap对应的pte段空间里，然后清掉映射
+// paging_init -> early_pgtable_alloc
 static phys_addr_t __init early_pgtable_alloc(void)
 {
 	phys_addr_t phys;
@@ -89,15 +97,17 @@ static phys_addr_t __init early_pgtable_alloc(void)
 	 * slot will be free, so we can (ab)use the FIX_PTE slot to initialise
 	 * any level of table.
 	 */
-	ptr = pte_set_fixmap(phys);
+	ptr = pte_set_fixmap(phys); // 把phys映射到pte指向的虚拟地址空间 
+	                            // 返回的 ptr 是 phys 对应的 虚拟地址，即 fix pte 对应的虚拟地址
+	                            // 这个函数里会完成映射，确保虚拟内存可以通过ptr访问
 
-	memset(ptr, 0, PAGE_SIZE);
+	memset(ptr, 0, PAGE_SIZE);  // 申请的空间清零
 
 	/*
 	 * Implicit barriers also ensure the zeroed page is visible to the page
 	 * table walker
 	 */
-	pte_clear_fixmap();
+	pte_clear_fixmap();  // 只是为了申请物理内存，所以这里把pte转换表又清掉了
 
 	return phys;
 }
@@ -116,7 +126,7 @@ static void split_pmd(pmd_t *pmd, pte_t *pte)
 		pfn++;
 	} while (pte++, i++, i < PTRS_PER_PTE);
 }
-
+// alloc_init_pmd -> alloc_init_pte
 static void alloc_init_pte(pmd_t *pmd, unsigned long addr,
 				  unsigned long end, unsigned long pfn,
 				  pgprot_t prot,
@@ -158,7 +168,7 @@ static void split_pud(pud_t *old_pud, pmd_t *pmd)
 		addr += PMD_SIZE;
 	} while (pmd++, i++, i < PTRS_PER_PMD);
 }
-
+// alloc_init_pud -> alloc_init_pmd
 static void alloc_init_pmd(pud_t *pud, unsigned long addr, unsigned long end,
 				  phys_addr_t phys, pgprot_t prot,
 				  phys_addr_t (*pgtable_alloc)(void),
@@ -229,7 +239,7 @@ static inline bool use_1G_block(unsigned long addr, unsigned long next,
 
 	return true;
 }
-
+// __create_pgd_mapping -> alloc_init_pud
 static void alloc_init_pud(pgd_t *pgd, unsigned long addr, unsigned long end,
 				  phys_addr_t phys, pgprot_t prot,
 				  phys_addr_t (*pgtable_alloc)(void),
@@ -282,6 +292,17 @@ static void alloc_init_pud(pgd_t *pgd, unsigned long addr, unsigned long end,
 	pud_clear_fixmap();
 }
 
+// create_mapping_noalloc -> __create_pgd_mapping     把 fdt 映射到当前的mmu里
+// map_kernel_segment -> __create_pgd_mapping    此时的pgdir是一片临时的物理内存页
+// create_mapping_noalloc -> __create_pgd_mapping
+
+// pgdir是 L0 (PGD) 转换表的基址 (物理地址)
+// phys 物理地址起始
+// virt 虚拟地址起始
+// size 地址大小
+// 把virt表示的虚拟地址映射到phys表示的物理地址上，映射表写到pgdir里
+// pgtable_alloc : early_pgtable_alloc     刚准备好 memblock 时，使用这个函数
+// pgtable_alloc : early_pgd_pgtable_alloc  调用 page_init 以后，使用这个函数
 static void __create_pgd_mapping(pgd_t *pgdir, phys_addr_t phys,
 				 unsigned long virt, phys_addr_t size,
 				 pgprot_t prot,
@@ -289,7 +310,7 @@ static void __create_pgd_mapping(pgd_t *pgdir, phys_addr_t phys,
 				 bool allow_block_mappings)
 {
 	unsigned long addr, length, end, next;
-	pgd_t *pgd = pgd_offset_raw(pgdir, virt);
+	pgd_t *pgd = pgd_offset_raw(pgdir, virt); // 找到 virt 对应的 pgd 表项
 
 	/*
 	 * If the virtual and physical address don't have the same offset
@@ -299,12 +320,12 @@ static void __create_pgd_mapping(pgd_t *pgdir, phys_addr_t phys,
 		return;
 
 	phys &= PAGE_MASK;
-	addr = virt & PAGE_MASK;
+	addr = virt & PAGE_MASK; // addr 表示起始的虚拟地址
 	length = PAGE_ALIGN(size + (virt & ~PAGE_MASK));
 
-	end = addr + length;
+	end = addr + length;  // end 表示结束的虚拟地址
 	do {
-		next = pgd_addr_end(addr, end);
+		next = pgd_addr_end(addr, end); // next表示下一个需要在PGD表里映射的地址段起始
 		alloc_init_pud(pgd, addr, next, phys, prot, pgtable_alloc,
 			       allow_block_mappings);
 		phys += next - addr;
@@ -322,7 +343,10 @@ static phys_addr_t pgd_pgtable_alloc(void)
 	return __pa(ptr);
 }
 
-static phys_addr_t __init early_pgd_pgtable_alloc(void)
+// 启动阶段调用这个函数时，整段物理内存都已经映射到转换表里了
+// paging_init 里把物理内存映射到转换表
+// create_mapping_noalloc -> create_mapping_noalloc -> ....  -> early_pgd_pgtable_alloc
+static phys_addr_t __init early_pgd_pgtable_alloc(void) 
 {
 	phys_addr_t phys;
 	void *ptr;
@@ -341,6 +365,8 @@ static phys_addr_t __init early_pgd_pgtable_alloc(void)
  * without allocating new levels of table. Note that this permits the
  * creation of new section or page entries.
  */
+// __fixmap_remap_fdt -> create_mapping_noalloc
+// dma_contiguous_remap -> create_mapping_noalloc
 void __init create_mapping_noalloc(phys_addr_t phys, unsigned long virt,
 				  phys_addr_t size, pgprot_t prot)
 {
@@ -374,7 +400,7 @@ static void create_mapping_late(phys_addr_t phys, unsigned long virt,
 	__create_pgd_mapping(init_mm.pgd, phys, virt, size, prot,
 			     NULL, !debug_pagealloc_enabled());
 }
-
+// map_mem -> __map_memblock
 static void __init __map_memblock(pgd_t *pgd, phys_addr_t start, phys_addr_t end)
 {
 	unsigned long kernel_start = __pa_symbol(_text);
@@ -421,21 +447,29 @@ static void __init __map_memblock(pgd_t *pgd, phys_addr_t start, phys_addr_t end
 			     kernel_end - kernel_start, PAGE_KERNEL_RO,
 			     early_pgtable_alloc, !debug_pagealloc_enabled());
 }
-
+// paging_init -> map_mem
 static void __init map_mem(pgd_t *pgd)
 {
 	struct memblock_region *reg;
 
 	/* map all the memory banks */
-	for_each_memblock(memory, reg) {
+	for_each_memblock(memory, reg) {   // memblock.memory 是在 arm64_memblock_init 里统计生成的．  maybe 其它地方也生成了
 		phys_addr_t start = reg->base;
 		phys_addr_t end = start + reg->size;
 
 		if (start >= end)
 			break;
-		if (memblock_is_nomap(reg))
+		if (memblock_is_nomap(reg))  // tx2 没有满足这个分支的记录
 			continue;
 
+        /*
+        tx2 :   dts 里记录的memory信息
+        start 0x0000000080000000   end 0x00000000f0000000   total 1792 MB
+        start 0x00000000f0200000   end 0x0000000275800000   total 6230 MB
+        start 0x0000000275e00000   end 0x0000000276000000   total 2 MB
+        start 0x0000000276600000   end 0x0000000276800000   total 2 MB
+        start 0x0000000277000000   end 0x0000000277200000   total 2 MB
+        */
 		__map_memblock(pgd, start, end);
 	}
 }
@@ -456,6 +490,8 @@ void mark_rodata_ro(void)
 			    section_size, PAGE_KERNEL_RO);
 }
 
+// map_kernel -> map_kernel_segment
+// pgd 表示 L0 转换表的基址
 static void __init map_kernel_segment(pgd_t *pgd, void *va_start, void *va_end,
 				      pgprot_t prot, struct vm_struct *vma)
 {
@@ -511,6 +547,8 @@ core_initcall(map_entry_trampoline);
 /*
  * Create fine-grained mappings for the kernel.
  */
+// 创建内核映像的转换表
+// paging_init -> map_kernel
 static void __init map_kernel(pgd_t *pgd)
 {
 	static struct vm_struct vmlinux_text, vmlinux_rodata, vmlinux_init, vmlinux_data;
@@ -521,6 +559,8 @@ static void __init map_kernel(pgd_t *pgd)
 			   &vmlinux_init);
 	map_kernel_segment(pgd, _data, _end, PAGE_KERNEL, &vmlinux_data);
 
+    // 把当前设置的fix转换表，拷到pgd里
+    // fix转换表是在 early_fixmap_init 里生成的
 	if (!pgd_val(*pgd_offset_raw(pgd, FIXADDR_START))) {
 		/*
 		 * The fixmap falls in a separate pgd to the kernel, and doesn't
@@ -552,14 +592,15 @@ static void __init map_kernel(pgd_t *pgd)
  * maps and sets up the zero page.
  */
 void __init dma_contiguous_remap(void);
-
-void __init paging_init(void)
+// setup_arch -> paging_init
+void __init paging_init(void)  // 把内核和所有的物理内存都映射到内核运行空间
 {
-	phys_addr_t pgd_phys = early_pgtable_alloc();
-	pgd_t *pgd = pgd_set_fixmap(pgd_phys);
+	phys_addr_t pgd_phys = early_pgtable_alloc(); // 申请到一个临时的 pgd 页，这是一个物理页．
+	                                             // 这个物理页没有做MMU映射，所以不能用虚拟内存访问
+	pgd_t *pgd = pgd_set_fixmap(pgd_phys);  // L0 映射表的基地址
 
-	map_kernel(pgd);
-	map_mem(pgd);
+	map_kernel(pgd);  // 创建内核的映射表
+	map_mem(pgd);  // 把整段物理内存映射到转换表里，此时把整段物理内存都认为是内核可访问的空间
 
 	/*
 	 * We want to reuse the original swapper_pg_dir so we don't have to
@@ -570,7 +611,7 @@ void __init paging_init(void)
 	 * To do this we need to go via a temporary pgd.
 	 */
 	cpu_replace_ttbr1(__va(pgd_phys));
-	memcpy(swapper_pg_dir, pgd, PGD_SIZE);
+	memcpy(swapper_pg_dir, pgd, PGD_SIZE);  // 替换转换表，把pgd里保存的转换表，拷贝到swapper_pg_dir里
 	cpu_replace_ttbr1(lm_alias(swapper_pg_dir));
 
 	pgd_clear_fixmap();
@@ -1035,14 +1076,26 @@ int kern_addr_valid(unsigned long addr)
 
 	return pfn_valid(pte_pfn(*pte));
 }
-#ifdef CONFIG_SPARSEMEM_VMEMMAP
-#if !ARM64_SWAPPER_USES_SECTION_MAPS
+#ifdef CONFIG_SPARSEMEM_VMEMMAP  // tx2 定义了　　CONFIG_SPARSEMEM_VMEMMAP
+#if !ARM64_SWAPPER_USES_SECTION_MAPS   // tx2 里 ARM64_SWAPPER_USES_SECTION_MAPS 定义成　１
 int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node)
 {
 	return vmemmap_populate_basepages(start, end, node);
 }
 #else	/* !ARM64_SWAPPER_USES_SECTION_MAPS */
-int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node)
+/*
+tx2 调用参数
+start 0xffffffbf00000000 end 0xffffffbf01000000
+start 0xffffffbf01000000 end 0xffffffbf02000000
+start 0xffffffbf02000000 end 0xffffffbf03000000
+start 0xffffffbf03000000 end 0xffffffbf04000000
+start 0xffffffbf04000000 end 0xffffffbf05000000
+start 0xffffffbf05000000 end 0xffffffbf06000000
+start 0xffffffbf06000000 end 0xffffffbf07000000
+start 0xffffffbf07000000 end 0xffffffbf08000000
+*/
+// sparse_mem_map_populate -> vmemmap_populate
+int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node)　// 为page使用的虚拟地址添加映射
 {
 	unsigned long addr = start;
 	unsigned long next;
@@ -1084,7 +1137,7 @@ void vmemmap_free(unsigned long start, unsigned long end)
 #endif
 }
 #endif	/* CONFIG_SPARSEMEM_VMEMMAP */
-
+// early_fixmap_init -> fixmap_pud
 static inline pud_t * fixmap_pud(unsigned long addr)
 {
 	pgd_t *pgd = pgd_offset_k(addr);
@@ -1114,6 +1167,8 @@ static inline pte_t * fixmap_pte(unsigned long addr)
  * lm_alias so __p*d_populate functions must be used to populate with the
  * physical address from __pa_symbol.
  */
+// 启动阶段，在生成内存管理结构以前，需要生成一些固定映射满足启动阶段的内存需求
+// setup_arch -> early_fixmap_init
 void __init early_fixmap_init(void)
 {
 	pgd_t *pgd;
@@ -1121,7 +1176,7 @@ void __init early_fixmap_init(void)
 	pmd_t *pmd;
 	unsigned long addr = FIXADDR_START;
 
-	pgd = pgd_offset_k(addr);
+	pgd = pgd_offset_k(addr);   // 获取addr对应的L0转换表的表项地址
 	if (CONFIG_PGTABLE_LEVELS > 3 &&
 	    !(pgd_none(*pgd) || pgd_page_paddr(*pgd) == __pa_symbol(bm_pud))) {
 		/*
@@ -1163,7 +1218,14 @@ void __init early_fixmap_init(void)
 		pr_warn("FIX_BTMAP_BEGIN:     %d\n", FIX_BTMAP_BEGIN);
 	}
 }
+/*
+设置fix地址的转换表　
+idx  是fix虚拟地址的id
+phys 是物理地址
 
+flags非0，把idx对应的fix虚拟地址，映射到phys对应的物理地址上
+flags是0，把idx对应的fix虚拟地址映射清掉
+*/
 void __set_fixmap(enum fixed_addresses idx,
 			       phys_addr_t phys, pgprot_t flags)
 {
@@ -1181,7 +1243,7 @@ void __set_fixmap(enum fixed_addresses idx,
 		flush_tlb_kernel_range(addr, addr+PAGE_SIZE);
 	}
 }
-
+// fixmap_remap_fdt -> __fixmap_remap_fdt
 void *__init __fixmap_remap_fdt(phys_addr_t dt_phys, int *size, pgprot_t prot)
 {
 	const u64 dt_virt_base = __fix_to_virt(FIX_FDT);
@@ -1234,7 +1296,7 @@ void *__init __fixmap_remap_fdt(phys_addr_t dt_phys, int *size, pgprot_t prot)
 
 	return dt_virt;
 }
-
+// setup_machine_fdt -> fixmap_remap_fdt
 void *__init fixmap_remap_fdt(phys_addr_t dt_phys)
 {
 	void *dt_virt;

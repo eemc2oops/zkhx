@@ -688,7 +688,7 @@ static const struct of_device_id psci_of_match[] __initconst = {
 	{ .compatible = "arm,psci-1.0",	.data = psci_0_2_init},
 	{},
 };
-
+// setup_arch -> psci_dt_init
 int __init psci_dt_init(void)
 {
 	struct device_node *np;

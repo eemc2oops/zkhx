@@ -15,6 +15,8 @@
 #define __SYSCALL(x, y)
 #endif
 
+// 由 kernel/entry.S el0_svc  执行系统调用
+
 #if __BITS_PER_LONG == 32 || defined(__SYSCALL_COMPAT)
 #define __SC_3264(_nr, _32, _64) __SYSCALL(_nr, _32)
 #else

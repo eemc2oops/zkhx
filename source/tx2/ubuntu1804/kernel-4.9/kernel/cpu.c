@@ -2200,6 +2200,7 @@ void init_cpu_online(const struct cpumask *src)
 /*
  * Activate the first processor.
  */
+// start_kernel -> boot_cpu_init
 void __init boot_cpu_init(void)
 {
 	int cpu = smp_processor_id();
@@ -2214,6 +2215,7 @@ void __init boot_cpu_init(void)
 /*
  * Must be called _AFTER_ setting up the per_cpu areas
  */
+// start_kernel -> boot_cpu_hotplug_init
 void __init boot_cpu_hotplug_init(void)
 {
 #ifdef CONFIG_SMP

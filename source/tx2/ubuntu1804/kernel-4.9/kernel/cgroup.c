@@ -645,6 +645,7 @@ struct cgrp_cset_link {
  * reference-counted, to improve performance when child cgroups
  * haven't been created.
  */
+// 赋给 init_task.cgroups 字段      cgroup_init_early 里完成
 struct css_set init_css_set = {
 	.refcount		= ATOMIC_INIT(1),
 	.cgrp_links		= LIST_HEAD_INIT(init_css_set.cgrp_links),
@@ -5612,6 +5613,7 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
  * Initialize cgroups at system boot, and initialize any
  * subsystems that request early init.
  */
+// start_kernel -> cgroup_init_early
 int __init cgroup_init_early(void)
 {
 	static struct cgroup_sb_opts __initdata opts;

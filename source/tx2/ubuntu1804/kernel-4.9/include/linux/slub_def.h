@@ -37,10 +37,12 @@ enum stat_item {
 	CPU_PARTIAL_DRAIN,	/* Drain cpu partial to node partial */
 	NR_SLUB_STAT_ITEMS };
 
+// alloc_kmem_cache_cpus 里申请的 cpu 变量
+// kmem_cache.cpu_slab
 struct kmem_cache_cpu {
 	void **freelist;	/* Pointer to next available object */
 	unsigned long tid;	/* Globally unique transaction id */
-	struct page *page;	/* The slab from which we are allocating */
+	struct page *page;	/* The slab from which we are allocating */  // ___slab_alloc 里使用
 	struct page *partial;	/* Partially allocated frozen slabs */
 #ifdef CONFIG_SLUB_STATS
 	unsigned stat[NR_SLUB_STAT_ITEMS];
@@ -59,6 +61,7 @@ struct kmem_cache_order_objects {
 /*
  * Slab cache management.
  */
+// create_boot_cache 里初始化这个结构
 struct kmem_cache {
 	struct kmem_cache_cpu __percpu *cpu_slab;
 	/* Used for retriving partial slabs etc */
@@ -69,19 +72,20 @@ struct kmem_cache {
 	int offset;		/* Free pointer offset. */
 	/* Number of per cpu partial objects to keep around */
 	unsigned int cpu_partial;
-	struct kmem_cache_order_objects oo;
+	struct kmem_cache_order_objects oo;  // calculate_sizes
 
 	/* Allocation and freeing of slabs */
-	struct kmem_cache_order_objects max;
-	struct kmem_cache_order_objects min;
+	struct kmem_cache_order_objects max;  // calculate_sizes
+	struct kmem_cache_order_objects min;  // calculate_sizes
 	gfp_t allocflags;	/* gfp flags to use on each alloc */
 	int refcount;		/* Refcount for slab cache destroy */
 	void (*ctor)(void *);
 	int inuse;		/* Offset to metadata */
 	int align;		/* Alignment */
 	int reserved;		/* Reserved bytes at the end of slabs */
-	const char *name;	/* Name (only for display!) */
-	struct list_head list;	/* List of slab caches */
+	const char *name;	/* Name (only for display!) */  // "kmem_cache_node"  kmem_cache_init
+	                                                    // "kmem_cache"  kmem_cache_init
+	struct list_head list;	/* List of slab caches */  // 挂在 slab_caches 队列里     bootstrap 里挂队列
 	int red_left_pad;	/* Left redzone padding size */
 #ifdef CONFIG_SYSFS
 	struct kobject kobj;	/* For sysfs */
@@ -109,7 +113,8 @@ struct kmem_cache {
 	struct kasan_cache kasan_info;
 #endif
 
-	struct kmem_cache_node *node[MAX_NUMNODES];
+	struct kmem_cache_node *node[MAX_NUMNODES];  // tx2 : node[1]  只有一个元素
+	                                            // init_kmem_cache_nodes 里申请空间，并赋值
 };
 
 #ifdef CONFIG_SYSFS

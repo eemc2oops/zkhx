@@ -13,7 +13,7 @@ typedef struct {
 	u64 val;
 } pfn_t;
 #endif
-
+// pfn   表示物理内存的页帧号
 #define PFN_ALIGN(x)	(((unsigned long)(x) + (PAGE_SIZE - 1)) & PAGE_MASK)
 #define PFN_UP(x)	(((x) + PAGE_SIZE-1) >> PAGE_SHIFT)
 #define PFN_DOWN(x)	((x) >> PAGE_SHIFT)

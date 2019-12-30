@@ -102,7 +102,8 @@ extern void radix_tree_init(void);
  * operations which are not allowed with IRQ disabled are allowed while the
  * flag is set.
  */
-bool early_boot_irqs_disabled __read_mostly;
+// bool early_boot_irqs_disabled __read_mostly;   为了读代码跳转方便，注释本行，改成下一行．
+bool early_boot_irqs_disabled;   // 初始化阶段 start_kernel 里赋 true
 
 enum system_states system_state __read_mostly;
 EXPORT_SYMBOL(system_state);
@@ -435,6 +436,7 @@ void __init parse_early_options(char *cmdline)
 }
 
 /* Arch code calls this early on, or if not, just before other parsing. */
+// setup_arch -> parse_early_param
 void __init parse_early_param(void)
 {
 	static int done __initdata;
@@ -462,13 +464,14 @@ void __init __weak thread_stack_cache_init(void)
 /*
  * Set up kernel memory allocators
  */
+// start_kernel -> mm_init
 static void __init mm_init(void)
 {
 	/*
 	 * page_ext requires contiguous pages,
 	 * bigger than MAX_ORDER unless SPARSEMEM.
 	 */
-	page_ext_init_flatmem();
+	page_ext_init_flatmem();  // tx2 可以忽略本函数
 	mem_init();
 	kmem_cache_init();
 	percpu_init_late();
@@ -483,8 +486,8 @@ asmlinkage __visible void __init start_kernel(void)
 	char *command_line;
 	char *after_dashes;
 
-	set_task_stack_end_magic(&init_task);
-	smp_setup_processor_id();
+	set_task_stack_end_magic(&init_task);  // 设置init_task的内核栈底幻数
+	smp_setup_processor_id();     // 清除cpu变量的基址
 	debug_objects_early_init();
 
 	/*
@@ -502,9 +505,9 @@ asmlinkage __visible void __init start_kernel(void)
  * enable them
  */
 	boot_cpu_init();
-	page_address_init();
+	page_address_init();   // tx2 这里是个空函数
 	pr_notice("%s", linux_banner);
-	setup_arch(&command_line);  // cpu体系结构相关的初始化操作
+	setup_arch(&command_line);  // cpu体系结构相关的初始化操作，主要是内存 memblock, section, page 的初始化
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();

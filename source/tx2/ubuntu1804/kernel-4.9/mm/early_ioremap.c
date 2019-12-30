@@ -18,7 +18,8 @@
 #include <asm/early_ioremap.h>
 
 #ifdef CONFIG_MMU
-static int early_ioremap_debug __initdata;
+// static int early_ioremap_debug __initdata; 源码定义是这一行，为了走读方便，改成下一行．
+static int early_ioremap_debug;
 
 static int __init early_ioremap_debug_setup(char *str)
 {
@@ -28,12 +29,13 @@ static int __init early_ioremap_debug_setup(char *str)
 }
 early_param("early_ioremap_debug", early_ioremap_debug_setup);
 
-static int after_paging_init __initdata;
+// static int after_paging_init __initdata; 源码定义是这一行，为了走读方便，改成下一行．
+static int after_paging_init;   // early_ioremap_reset 里置1
 
 void __init __weak early_ioremap_shutdown(void)
 {
 }
-
+// setup_arch -> early_ioremap_reset
 void __init early_ioremap_reset(void)
 {
 	early_ioremap_shutdown();
@@ -60,11 +62,16 @@ static inline void __init __late_clear_fixmap(enum fixed_addresses idx)
 }
 #endif
 
-static void __iomem *prev_map[FIX_BTMAPS_SLOTS] __initdata;
-static unsigned long prev_size[FIX_BTMAPS_SLOTS] __initdata;
-static unsigned long slot_virt[FIX_BTMAPS_SLOTS] __initdata;
+// static void __iomem *prev_map[FIX_BTMAPS_SLOTS] __initdata;  源码定义是这一行，为了阅读方便，改成下一行
+static void __iomem *prev_map[FIX_BTMAPS_SLOTS];
+// static unsigned long prev_size[FIX_BTMAPS_SLOTS] __initdata;  源码定义是这一行，为了阅读方便，改成下一行
+static unsigned long prev_size[FIX_BTMAPS_SLOTS];
+// static unsigned long slot_virt[FIX_BTMAPS_SLOTS] __initdata;  源码定义是这一行，为了阅读方便，改成下一行
+static unsigned long slot_virt[FIX_BTMAPS_SLOTS];    // early_ioremap_setup 里初始化本值
+                                                    // 保存 fix 内存区段的虚拟地址
 
-void __init early_ioremap_setup(void)
+// early_ioremap_init -> early_ioremap_setup
+void __init early_ioremap_setup(void)  // 初始化fix
 {
 	int i;
 

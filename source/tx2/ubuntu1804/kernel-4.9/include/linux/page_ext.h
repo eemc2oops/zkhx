@@ -13,7 +13,7 @@ struct page_ext_operations {
 	void (*init)(void);
 };
 
-#ifdef CONFIG_PAGE_EXTENSION
+#ifdef CONFIG_PAGE_EXTENSION    // tx2 没有定义 CONFIG_PAGE_EXTENSION
 
 /*
  * page_ext->flags bits:
@@ -77,7 +77,7 @@ static inline struct page_ext *lookup_page_ext(struct page *page)
 static inline void page_ext_init(void)
 {
 }
-
+// mm_init -> page_ext_init_flatmem
 static inline void page_ext_init_flatmem(void)
 {
 }

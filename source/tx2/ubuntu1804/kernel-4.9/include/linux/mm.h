@@ -33,9 +33,9 @@ struct user_struct;
 struct writeback_control;
 struct bdi_writeback;
 
-#ifndef CONFIG_NEED_MULTIPLE_NODES	/* Don't use mapnrs, do it properly */
+#ifndef CONFIG_NEED_MULTIPLE_NODES	/* Don't use mapnrs, do it properly */  // tx2 没有定义　CONFIG_NEED_MULTIPLE_NODES
 extern unsigned long max_mapnr;
-
+// mem_init -> set_max_mapnr
 static inline void set_max_mapnr(unsigned long limit)
 {
 	max_mapnr = limit;
@@ -1057,7 +1057,7 @@ void set_page_address(struct page *page, void *virtual);
 void page_address_init(void);
 #endif
 
-#if !defined(HASHED_PAGE_VIRTUAL) && !defined(WANT_PAGE_VIRTUAL)
+#if !defined(HASHED_PAGE_VIRTUAL) && !defined(WANT_PAGE_VIRTUAL)   // tx2 满足这个分支
 #define page_address(page) lowmem_page_address(page)
 #define set_page_address(page, address)  do { } while(0)
 #define page_address_init()  do { } while(0)
@@ -2461,7 +2461,7 @@ extern void copy_user_huge_page(struct page *dst, struct page *src,
 extern struct page_ext_operations debug_guardpage_ops;
 extern struct page_ext_operations page_poisoning_ops;
 
-#ifdef CONFIG_DEBUG_PAGEALLOC
+#ifdef CONFIG_DEBUG_PAGEALLOC  // tx2 没有定义 CONFIG_DEBUG_PAGEALLOC
 extern unsigned int _debug_guardpage_minorder;
 extern bool _debug_guardpage_enabled;
 
@@ -2489,6 +2489,7 @@ static inline bool page_is_guard(struct page *page)
 	return test_bit(PAGE_EXT_DEBUG_GUARD, &page_ext->flags);
 }
 #else
+// kmem_cache_init -> debug_guardpage_minorder
 static inline unsigned int debug_guardpage_minorder(void) { return 0; }
 static inline bool debug_guardpage_enabled(void) { return false; }
 static inline bool page_is_guard(struct page *page) { return false; }

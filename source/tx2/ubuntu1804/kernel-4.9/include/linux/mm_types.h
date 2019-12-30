@@ -43,6 +43,9 @@ struct hmm;
  * allows the use of atomic double word operations on the flags/mapping
  * and lru list pointers also.
  */
+// 保存page的空间详见 pfn_to_page 宏的转换过程
+// page的建立与 section id 相关
+// sizeof(page) = 64
 struct page {
 	/* First double word block */
 	unsigned long flags;		/* Atomic flags, some possibly
@@ -414,7 +417,7 @@ struct mm_struct {
 	unsigned long mmap_legacy_base;         /* base of mmap area in bottom-up allocations */
 	unsigned long task_size;		/* size of task vm space */
 	unsigned long highest_vm_end;		/* highest vma end address */
-	pgd_t * pgd;
+	pgd_t * pgd;                    // init_mm 的 pgd 初始化成 swapper_pg_dir ．
 	atomic_t mm_users;			/* How many users with user space? */
 	atomic_t mm_count;			/* How many references to "struct mm_struct" (users count as 1) */
 	atomic_long_t nr_ptes;			/* PTE page table pages */
@@ -442,7 +445,10 @@ struct mm_struct {
 	unsigned long exec_vm;		/* VM_EXEC & ~VM_WRITE & ~VM_STACK */
 	unsigned long stack_vm;		/* VM_STACK */
 	unsigned long def_flags;
-	unsigned long start_code, end_code, start_data, end_data;
+	unsigned long start_code, end_code, start_data, end_data; /*  setup_arch 里对 init_mm 里的这四个字段赋值
+	                                  init_mm 的       start_code = _text     end_code = _etext    end_data = _edata     brk = _end
+	
+	                                                          */
 	unsigned long start_brk, brk, start_stack;
 	unsigned long arg_start, arg_end, env_start, env_end;
 

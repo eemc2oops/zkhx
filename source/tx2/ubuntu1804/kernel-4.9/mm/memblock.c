@@ -25,13 +25,68 @@
 
 #include "internal.h"
 
-static struct memblock_region memblock_memory_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
-static struct memblock_region memblock_reserved_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
+// static struct memblock_region memblock_memory_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock; 源码定义是这一条，为了走读方便，改成下一行
+static struct memblock_region memblock_memory_init_regions[INIT_MEMBLOCK_REGIONS];  // 定义 128 个 memblock_region
+// static struct memblock_region memblock_reserved_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock; 源码定义是这一条，为了走读方便，改成下一行
+static struct memblock_region memblock_reserved_init_regions[INIT_MEMBLOCK_REGIONS];
 #ifdef CONFIG_HAVE_MEMBLOCK_PHYS_MAP
-static struct memblock_region memblock_physmem_init_regions[INIT_PHYSMEM_REGIONS] __initdata_memblock;
+// static struct memblock_region memblock_physmem_init_regions[INIT_PHYSMEM_REGIONS] __initdata_memblock; 源码定义是这一条，为了走读方便，改成下一行
+static struct memblock_region memblock_physmem_init_regions[INIT_PHYSMEM_REGIONS];
 #endif
 
-struct memblock memblock __initdata_memblock = {
+/*
+Tx2 的 memblock 信息
+__memblock_dump_all 的　dump 信息
+MEMBLOCK configuration:
+ memory size = 0x1f5c00000 reserved size = 0xe160a5d
+ memory.cnt  = 0x5
+ memory[0x0]	[0x00000080000000-0x000000efffffff], 0x70000000 bytes flags: 0x0
+ memory[0x1]	[0x000000f0200000-0x000002757fffff], 0x185600000 bytes flags: 0x0
+ memory[0x2]	[0x00000275e00000-0x00000275ffffff], 0x200000 bytes flags: 0x0
+ memory[0x3]	[0x00000276600000-0x000002767fffff], 0x200000 bytes flags: 0x0
+ memory[0x4]	[0x00000277000000-0x000002771fffff], 0x200000 bytes flags: 0x0
+ reserved.cnt  = 0x26
+ reserved[0x0]	[0x00000080000000-0x00000080058fff], 0x59000 bytes flags: 0x0
+ reserved[0x1]	[0x00000080280000-0x000000821a1fff], 0x1f22000 bytes flags: 0x0
+ reserved[0x2]	[0x000000821a3000-0x000000821a3fff], 0x1000 bytes flags: 0x0
+ reserved[0x3]	[0x000000bffff800-0x000000bfffffff], 0x800 bytes flags: 0x0
+ reserved[0x4]	[0x000000fc000000-0x000000ffffffff], 0x4000000 bytes flags: 0x0
+ reserved[0x5]	[0x0000026da00000-0x000002757fffff], 0x7e00000 bytes flags: 0x0
+ reserved[0x6]	[0x00000275e00000-0x00000275ffffff], 0x200000 bytes flags: 0x0
+ reserved[0x7]	[0x0000027701b000-0x0000027701bfff], 0x1000 bytes flags: 0x0
+ reserved[0x8]	[0x0000027701cd40-0x0000027701dd3f], 0x1000 bytes flags: 0x0
+ reserved[0x9]	[0x0000027701dd50-0x0000027701dd7b], 0x2c bytes flags: 0x0
+ reserved[0xa]	[0x0000027701dd80-0x0000027701ddab], 0x2c bytes flags: 0x0
+ reserved[0xb]	[0x0000027701ddb0-0x0000027701ddde], 0x2f bytes flags: 0x0
+ reserved[0xc]	[0x0000027701dde0-0x0000027701de0e], 0x2f bytes flags: 0x0
+ reserved[0xd]	[0x0000027701de10-0x0000027701de3e], 0x2f bytes flags: 0x0
+ reserved[0xe]	[0x0000027701de40-0x0000027701de6e], 0x2f bytes flags: 0x0
+ reserved[0xf]	[0x0000027701de70-0x0000027701de9e], 0x2f bytes flags: 0x0
+ reserved[0x10]	[0x0000027701dea0-0x0000027701dece], 0x2f bytes flags: 0x0
+ reserved[0x11]	[0x0000027701ded0-0x0000027701defe], 0x2f bytes flags: 0x0
+ reserved[0x12]	[0x0000027701df00-0x0000027701df2b], 0x2c bytes flags: 0x0
+ reserved[0x13]	[0x0000027701df30-0x0000027701df5b], 0x2c bytes flags: 0x0
+ reserved[0x14]	[0x0000027701df60-0x0000027701df8b], 0x2c bytes flags: 0x0
+ reserved[0x15]	[0x0000027701df90-0x0000027701dfbb], 0x2c bytes flags: 0x0
+ reserved[0x16]	[0x0000027701dfc0-0x0000027701dfeb], 0x2c bytes flags: 0x0
+ reserved[0x17]	[0x0000027701dff0-0x0000027701e01b], 0x2c bytes flags: 0x0
+ reserved[0x18]	[0x0000027701e020-0x0000027701e04b], 0x2c bytes flags: 0x0
+ reserved[0x19]	[0x0000027701e050-0x0000027701e07b], 0x2c bytes flags: 0x0
+ reserved[0x1a]	[0x0000027701e080-0x0000027701e0ab], 0x2c bytes flags: 0x0
+ reserved[0x1b]	[0x0000027701e0b0-0x0000027701e0db], 0x2c bytes flags: 0x0
+ reserved[0x1c]	[0x0000027701e0e0-0x0000027701e10b], 0x2c bytes flags: 0x0
+ reserved[0x1d]	[0x0000027701e110-0x0000027701e13b], 0x2c bytes flags: 0x0
+ reserved[0x1e]	[0x0000027701e140-0x0000027701e16b], 0x2c bytes flags: 0x0
+ reserved[0x1f]	[0x0000027701e170-0x0000027701e19b], 0x2c bytes flags: 0x0
+ reserved[0x20]	[0x0000027701e1a0-0x0000027701e1cb], 0x2c bytes flags: 0x0
+ reserved[0x21]	[0x0000027701e1d0-0x0000027701e1fd], 0x2e bytes flags: 0x0
+ reserved[0x22]	[0x0000027701e200-0x0000027701e22d], 0x2e bytes flags: 0x0
+ reserved[0x23]	[0x0000027701e230-0x0000027701e25d], 0x2e bytes flags: 0x0
+ reserved[0x24]	[0x0000027701e260-0x0000027701e28d], 0x2e bytes flags: 0x0
+ reserved[0x25]	[0x0000027701e290-0x000002771fffff], 0x1e1d70 bytes flags: 0x0
+*/
+// struct memblock memblock __initdata_memblock = {  源码定义是这一条，为了走读方便，改成下一行
+struct memblock memblock = {
 	.memory.regions		= memblock_memory_init_regions,
 	.memory.cnt		= 1,	/* empty dummy entry */
 	.memory.max		= INIT_MEMBLOCK_REGIONS,
@@ -151,10 +206,11 @@ __memblock_find_range_bottom_up(phys_addr_t start, phys_addr_t end,
  * RETURNS:
  * Found address on success, 0 on failure.
  */
+// memblock_find_in_range_node -> __memblock_find_range_top_down
 static phys_addr_t __init_memblock
 __memblock_find_range_top_down(phys_addr_t start, phys_addr_t end,
 			       phys_addr_t size, phys_addr_t align, int nid,
-			       ulong flags)
+			       ulong flags)  // 从 memblock 里找一段满足大小的内存
 {
 	phys_addr_t this_start, this_end, cand;
 	u64 i;
@@ -197,6 +253,7 @@ __memblock_find_range_top_down(phys_addr_t start, phys_addr_t end,
  * RETURNS:
  * Found address on success, 0 on failure.
  */
+// memblock_virt_alloc_internal -> memblock_find_in_range_node
 phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t size,
 					phys_addr_t align, phys_addr_t start,
 					phys_addr_t end, int nid, ulong flags)
@@ -216,7 +273,7 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t size,
 	 * try bottom-up allocation only when bottom-up mode
 	 * is set and @end is above the kernel image.
 	 */
-	if (memblock_bottom_up() && end > kernel_end) {
+	if (memblock_bottom_up() && end > kernel_end) { // tx2 这里固定为 false
 		phys_addr_t bottom_up_start;
 
 		/* make sure we will allocate above the kernel */
@@ -724,7 +781,7 @@ int __init_memblock memblock_free(phys_addr_t base, phys_addr_t size)
 	kmemleak_free_part_phys(base, size);
 	return memblock_remove_range(&memblock.reserved, base, size);
 }
-
+// fixmap_remap_fdt -> memblock_reserve
 int __init_memblock memblock_reserve(phys_addr_t base, phys_addr_t size)
 {
 	memblock_dbg("memblock_reserve: [%#016llx-%#016llx] flags %#02lx %pF\n",
@@ -741,6 +798,7 @@ int __init_memblock memblock_reserve(phys_addr_t base, phys_addr_t size)
  *
  * Return 0 on success, -errno on failure.
  */
+// memblock_clear_hotplug -> memblock_setclr_flag
 static int __init_memblock memblock_setclr_flag(phys_addr_t base,
 				phys_addr_t size, int set, int flag)
 {
@@ -780,6 +838,7 @@ int __init_memblock memblock_mark_hotplug(phys_addr_t base, phys_addr_t size)
  *
  * Return 0 on success, -errno on failure.
  */
+// free_low_memory_core_early -> memblock_clear_hotplug
 int __init_memblock memblock_clear_hotplug(phys_addr_t base, phys_addr_t size)
 {
 	return memblock_setclr_flag(base, size, 0, MEMBLOCK_HOTPLUG);
@@ -1257,6 +1316,7 @@ phys_addr_t __init memblock_alloc_try_nid(phys_addr_t size, phys_addr_t align, i
  * RETURNS:
  * Virtual address of allocated memory block on success, NULL on failure.
  */
+// memblock_virt_alloc_try_nid -> memblock_virt_alloc_internal
 static void * __init memblock_virt_alloc_internal(
 				phys_addr_t size, phys_addr_t align,
 				phys_addr_t min_addr, phys_addr_t max_addr,
@@ -1373,6 +1433,7 @@ void * __init memblock_virt_alloc_try_nid_nopanic(
  * RETURNS:
  * Virtual address of allocated memory block on success, NULL on failure.
  */
+// memblock_virt_alloc -> memblock_virt_alloc_try_nid
 void * __init memblock_virt_alloc_try_nid(
 			phys_addr_t size, phys_addr_t align,
 			phys_addr_t min_addr, phys_addr_t max_addr,
@@ -1469,11 +1530,13 @@ phys_addr_t __init memblock_mem_size(unsigned long limit_pfn)
 }
 
 /* lowest address */
+// arm64_memblock_init -> memblock_start_of_DRAM
+// bootmem_init -> memblock_start_of_DRAM
 phys_addr_t __init_memblock memblock_start_of_DRAM(void)
 {
-	return memblock.memory.regions[0].base;
+	return memblock.memory.regions[0].base;  // tx2 : 0x0000000080000000
 }
-
+// bootmem_init -> memblock_end_of_DRAM
 phys_addr_t __init_memblock memblock_end_of_DRAM(void)
 {
 	int idx = memblock.memory.cnt - 1;
@@ -1727,7 +1790,7 @@ memblock_reserved_memory_within(phys_addr_t start_addr, phys_addr_t end_addr)
 	return size;
 }
 
-void __init_memblock __memblock_dump_all(void)
+void __init_memblock __memblock_dump_all(void)  // dump 结果　查看 memblock 变量的定义
 {
 	pr_info("MEMBLOCK configuration:\n");
 	pr_info(" memory size = %#llx reserved size = %#llx\n",

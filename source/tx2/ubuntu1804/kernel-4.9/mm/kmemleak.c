@@ -538,6 +538,7 @@ static int __save_stack_trace(unsigned long *trace)
  * Create the metadata (struct kmemleak_object) corresponding to an allocated
  * memory block and add it to the object_list and object_tree_root.
  */
+// kmemleak_alloc -> create_object
 static struct kmemleak_object *create_object(unsigned long ptr, size_t size,
 					     int min_count, gfp_t gfp)
 {
@@ -908,6 +909,7 @@ static void early_alloc_percpu(struct early_log *log)
  * This function is called from the kernel allocators when a new object
  * (memory block) is allocated (kmem_cache_alloc, kmalloc, vmalloc etc.).
  */
+// memblock_virt_alloc_internal -> kmemleak_alloc
 void __ref kmemleak_alloc(const void *ptr, size_t size, int min_count,
 			  gfp_t gfp)
 {

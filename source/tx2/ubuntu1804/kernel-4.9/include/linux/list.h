@@ -639,6 +639,9 @@ static inline void hlist_del_init(struct hlist_node *n)
 	}
 }
 
+/*
+h表示一个队列，n表示一个元素，把n加到h队列的头部
+*/
 static inline void hlist_add_head(struct hlist_node *n, struct hlist_head *h)
 {
 	struct hlist_node *first = h->first;

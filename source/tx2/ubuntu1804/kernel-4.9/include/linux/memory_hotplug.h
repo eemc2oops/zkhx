@@ -13,7 +13,7 @@ struct mem_section;
 struct memory_block;
 struct resource;
 
-#ifdef CONFIG_MEMORY_HOTPLUG
+#ifdef CONFIG_MEMORY_HOTPLUG  // tx2 定义了 CONFIG_MEMORY_HOTPLUG
 
 /*
  * Types for free bootmem stored in page->lru.next. These have to be in
@@ -48,8 +48,8 @@ void pgdat_resize_unlock(struct pglist_data *pgdat, unsigned long *flags)
 {
 	spin_unlock_irqrestore(&pgdat->node_size_lock, *flags);
 }
-static inline
-void pgdat_resize_init(struct pglist_data *pgdat)
+// free_area_init_core -> pgdat_resize_init
+static inline void pgdat_resize_init(struct pglist_data *pgdat)
 {
 	spin_lock_init(&pgdat->node_size_lock);
 }

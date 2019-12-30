@@ -20,6 +20,8 @@
 #include <linux/compat.h>
 #include <linux/err.h>
 
+// 定义在 arch/arm64/kernel/sys.c 里
+// 跟据包含关系 arm64 系统调用定义在 include/uapi/asm-generic/unistd.h
 extern const void *sys_call_table[];
 
 static inline int syscall_get_nr(struct task_struct *task,

@@ -59,7 +59,9 @@
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 #include <linux/stackprotector.h>
-unsigned long __stack_chk_guard __read_mostly;
+// unsigned long __stack_chk_guard __read_mostly;   源码定义 为了方便代码跳转，改成如下写法
+unsigned long __stack_chk_guard;    // 栈顶守护值
+                                    // boot_init_stack_canary 里初始化本值
 EXPORT_SYMBOL(__stack_chk_guard);
 #endif
 

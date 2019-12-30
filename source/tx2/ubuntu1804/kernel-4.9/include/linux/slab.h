@@ -23,7 +23,7 @@
 #define SLAB_CONSISTENCY_CHECKS	0x00000100UL	/* DEBUG: Perform (expensive) checks on alloc/free */
 #define SLAB_RED_ZONE		0x00000400UL	/* DEBUG: Red zone objs in a cache */
 #define SLAB_POISON		0x00000800UL	/* DEBUG: Poison objects */
-#define SLAB_HWCACHE_ALIGN	0x00002000UL	/* Align objs on cache lines */
+#define SLAB_HWCACHE_ALIGN	0x00002000UL	/* Align objs on cache lines */   // kmem_cache_init
 #define SLAB_CACHE_DMA		0x00004000UL	/* Use GFP_DMA memory */
 #define SLAB_STORE_USER		0x00010000UL	/* DEBUG: Store the last owner for bug hunting */
 #define SLAB_PANIC		0x00040000UL	/* Panic if kmem_cache_create() fails */
@@ -174,8 +174,8 @@ static inline const char *__check_heap_object(const void *ptr,
  */
 #if defined(ARCH_DMA_MINALIGN) && ARCH_DMA_MINALIGN > 8
 #define ARCH_KMALLOC_MINALIGN ARCH_DMA_MINALIGN
-#define KMALLOC_MIN_SIZE ARCH_DMA_MINALIGN
-#define KMALLOC_SHIFT_LOW ilog2(ARCH_DMA_MINALIGN)
+#define KMALLOC_MIN_SIZE ARCH_DMA_MINALIGN   // tx2 : 64
+#define KMALLOC_SHIFT_LOW ilog2(ARCH_DMA_MINALIGN)  // tx2 : 6
 #else
 #define ARCH_KMALLOC_MINALIGN __alignof__(unsigned long long)
 #endif
@@ -358,7 +358,7 @@ static __always_inline void *__kmalloc_node(size_t size, gfp_t flags, int node)
 {
 	return __kmalloc(size, flags);
 }
-
+// init_kmem_cache_nodes -> kmem_cache_alloc_node
 static __always_inline void *kmem_cache_alloc_node(struct kmem_cache *s, gfp_t flags, int node)
 {
 	return kmem_cache_alloc(s, flags);
@@ -554,7 +554,7 @@ struct memcg_cache_array {
  * through @list.
  */
 struct memcg_cache_params {
-	bool is_root_cache;
+	bool is_root_cache;  // slab_init_memcg_params 里置 true
 	struct list_head list;
 	union {
 		struct memcg_cache_array __rcu *memcg_caches;

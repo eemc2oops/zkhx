@@ -15,6 +15,10 @@ struct task_struct;
  */
 static __always_inline struct task_struct *get_current(void)
 {
+    /*
+        启动阶段  　arch/arm64/kernel/head.S　 __primary_switched 里把 init_task 结构赋给 sp_el0
+        系统运行阶段 arch/arm64/kernel/entry.S  　   kernel_entry 里，当从用户态进入内核态时，用 sp_el0 保存当前 task_struct .
+    */
 	unsigned long sp_el0;
 
 	asm ("mrs %0, sp_el0" : "=r" (sp_el0));

@@ -1,7 +1,7 @@
 #ifndef __ASM_MMZONE_H
 #define __ASM_MMZONE_H
 
-#ifdef CONFIG_NUMA
+#ifdef CONFIG_NUMA   // tx2 没有定义 CONFIG_NUMA
 
 #include <asm/numa.h>
 

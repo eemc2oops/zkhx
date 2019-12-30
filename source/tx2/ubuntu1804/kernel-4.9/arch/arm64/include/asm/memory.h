@@ -52,7 +52,7 @@
  * VMEMMAP_SIZE - allows the whole linear region to be covered by
  *                a struct page array
  */
-#define VMEMMAP_SIZE (UL(1) << (VA_BITS - PAGE_SHIFT - 1 + STRUCT_PAGE_MAX_SHIFT))
+#define VMEMMAP_SIZE (UL(1) << (VA_BITS - PAGE_SHIFT - 1 + STRUCT_PAGE_MAX_SHIFT))  // tx2 : 0x0000000100000000    4G
 
 /*
  * PAGE_OFFSET - the virtual address of the start of the linear map (top
@@ -137,14 +137,16 @@ memory  : 0xffffffc000000000 - 0xffffffc1f7200000   (  8050 MB)
                                                                                 // 地址宽度是  　39 时      VA_START = 0xffffff80_00000000
 #define PAGE_OFFSET		(UL(0xffffffffffffffff) - (UL(1) << (VA_BITS - 1)) + 1)   //  内核里映像看到的物理内存映射起始地址
                                                                                   //  地址宽度是 39 时 PAGE_OFFSET = 0xffffffC0_00000000
+                                                                                  // tx2 : 0xffffffc000000000
 #define KIMAGE_VADDR		(MODULES_END)                      // kernel image start address
                                                                // tx2 : 0xffffff8008000000
 #define MODULES_END		(MODULES_VADDR + MODULES_VSIZE)        // 内核模块的结束地址
                                                                // tx2 MODULES_END = VA_START + SZ_128M         0xffffff80_08000000
 #define MODULES_VADDR		(VA_START + KASAN_SHADOW_SIZE)     // 内核模块的起始地址
                                                                // tx2  MODULES_VADDR = VA_START    0xffffff80_00000000
-#define MODULES_VSIZE		(SZ_128M)
-#define VMEMMAP_START		(PAGE_OFFSET - VMEMMAP_SIZE)
+#define MODULES_VSIZE		(SZ_128M)              // 0x08000000
+#define VMEMMAP_START		(PAGE_OFFSET - VMEMMAP_SIZE)    // 用于保存　page 结构的空间，vmemmap
+                                                            // tx2 : 0xffffffbf00000000
 #define PCI_IO_END		(VMEMMAP_START - SZ_2M)
 #define PCI_IO_START		(PCI_IO_END - PCI_IO_SIZE)
 #define FIXADDR_TOP		(PCI_IO_START - SZ_2M)

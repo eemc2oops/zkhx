@@ -118,8 +118,9 @@ struct pt_regs {
 			u64 pstate;  // spsr_el1
 		};
 	};
-	u64 orig_x0;
-	u64 syscallno;   // 如果是从el0进入异常，赋值为 -1
+	u64 orig_x0;    // 是系统调用流程时 el0_svc 里赋值为
+	u64 syscallno;   // 如果是从el0进入异常，首先在kernel_entry把值初始化为 -1
+	                //　当是系统调用时 el0_svc 里赋值为系统调用号
 	u64 orig_addr_limit;
 	u64 unused;	// maintain 16 byte alignment
 };

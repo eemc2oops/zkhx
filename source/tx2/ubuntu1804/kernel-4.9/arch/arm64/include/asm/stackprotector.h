@@ -23,6 +23,7 @@ extern unsigned long __stack_chk_guard;
  * NOTE: this must only be called from functions that never return,
  * and it must always be inlined.
  */
+// start_kernel -> boot_init_stack_canary      打开 CONFIG_CC_STACKPROTECTOR 才会走这里， tx2 没有打开 CONFIG_CC_STACKPROTECTOR 
 static __always_inline void boot_init_stack_canary(void)
 {
 	unsigned long canary;

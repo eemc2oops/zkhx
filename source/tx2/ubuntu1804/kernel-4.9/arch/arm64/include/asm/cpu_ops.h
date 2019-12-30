@@ -48,7 +48,7 @@
  */
 struct cpu_operations {
 	const char	*name;
-	int		(*cpu_init)(unsigned int);
+	int		(*cpu_init)(unsigned int); // smp_cpu_setup 里调用
 	int		(*cpu_prepare)(unsigned int);
 	int		(*cpu_boot)(unsigned int);
 	void		(*cpu_postboot)(void);
@@ -65,7 +65,7 @@ struct cpu_operations {
 
 extern const struct cpu_operations *cpu_ops[NR_CPUS];
 int __init cpu_read_ops(int cpu);
-
+// setup_arch -> cpu_read_bootcpu_ops
 static inline void __init cpu_read_bootcpu_ops(void)
 {
 	cpu_read_ops(0);

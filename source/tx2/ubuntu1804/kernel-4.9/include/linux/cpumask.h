@@ -750,7 +750,7 @@ extern const DECLARE_BITMAP(cpu_all_bits, NR_CPUS);
 void init_cpu_present(const struct cpumask *src);
 void init_cpu_possible(const struct cpumask *src);
 void init_cpu_online(const struct cpumask *src);
-
+// smp_cpu_setup -> set_cpu_possible
 static inline void
 set_cpu_possible(unsigned int cpu, bool possible)
 {

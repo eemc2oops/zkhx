@@ -439,7 +439,7 @@ static inline void mminit_verify_zonelist(void)
 #endif /* CONFIG_DEBUG_MEMORY_INIT */
 
 /* mminit_validate_memmodel_limits is independent of CONFIG_DEBUG_MEMORY_INIT */
-#if defined(CONFIG_SPARSEMEM)
+#if defined(CONFIG_SPARSEMEM)  // tx2 定义了 CONFIG_SPARSEMEM
 extern void mminit_validate_memmodel_limits(unsigned long *start_pfn,
 				unsigned long *end_pfn);
 #else

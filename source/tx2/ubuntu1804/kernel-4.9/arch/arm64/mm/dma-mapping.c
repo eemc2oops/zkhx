@@ -1573,9 +1573,12 @@ struct dma_contig_early_reserve {
 	unsigned long size;
 };
 
-static struct dma_contig_early_reserve dma_mmu_remap[MAX_CMA_AREAS] __initdata;
+// static struct dma_contig_early_reserve dma_mmu_remap[MAX_CMA_AREAS] __initdata; 源码定义在这一行，为了走读方便，改成下一行
+static struct dma_contig_early_reserve dma_mmu_remap[MAX_CMA_AREAS];   //
+                                                                       // dma_contiguous_remap 里映射 dma 内存
 
-static int dma_mmu_remap_num __initdata;
+// static int dma_mmu_remap_num __initdata; 源码定义在这一行，为了走读方便，改成下一行
+static int dma_mmu_remap_num;
 
 void __init dma_contiguous_early_fixup(phys_addr_t base, unsigned long size)
 {
@@ -1586,7 +1589,7 @@ void __init dma_contiguous_early_fixup(phys_addr_t base, unsigned long size)
 
 void __init create_mapping_noalloc(phys_addr_t phys, unsigned long virt,
 				  phys_addr_t size, pgprot_t prot);
-
+// paging_init -> dma_contiguous_remap
 void __init dma_contiguous_remap(void)
 {
 	int i;
@@ -1599,6 +1602,10 @@ void __init dma_contiguous_remap(void)
 		if (start >= end)
 			continue;
 
+        /*
+        tx2 :
+        start 0x00000000fc000000   end 0x0000000100000000   total 64 MB
+        */
 		for (addr = start; addr < end; addr += PAGE_SIZE)
 			create_mapping_noalloc(addr, __phys_to_virt(addr),
 				       PAGE_SIZE, PAGE_KERNEL);

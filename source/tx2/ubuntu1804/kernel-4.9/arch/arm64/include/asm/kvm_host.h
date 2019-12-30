@@ -102,7 +102,7 @@ struct kvm_vcpu_fault_info {
  */
 enum vcpu_sysreg {
 	__INVALID_SYSREG__,
-	MPIDR_EL1,	/* MultiProcessor Affinity Register */
+	MPIDR_EL1,	/* MultiProcessor Affinity Register */    // read_cpuid_mpidr
 	CSSELR_EL1,	/* Cache Size Selection Register */
 	SCTLR_EL1,	/* System Control Register */
 	ACTLR_EL1,	/* Auxiliary Control Register */

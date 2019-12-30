@@ -3,7 +3,7 @@
 
 #ifndef __ASSEMBLY__
 
-#ifdef CONFIG_KASAN
+#ifdef CONFIG_KASAN // tx2 没有定义 CONFIG_KASAN
 
 #include <linux/linkage.h>
 #include <asm/memory.h>
@@ -33,6 +33,7 @@ void kasan_copy_shadow(pgd_t *pgdir);
 asmlinkage void kasan_early_init(void);
 
 #else
+// setup_arch -> kasan_init
 static inline void kasan_init(void) { }
 static inline void kasan_copy_shadow(pgd_t *pgdir) { }
 #endif

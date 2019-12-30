@@ -11,7 +11,7 @@
 #ifdef CONFIG_EFI
 extern void efi_init(void);
 #else
-#define efi_init()
+#define efi_init()  // tx2
 #endif
 
 int efi_create_mapping(struct mm_struct *mm, efi_memory_desc_t *md);

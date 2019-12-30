@@ -26,7 +26,7 @@ EXPORT_SYMBOL(init_task);
 // __init_task_data 是宏定义 在 include/linux/init_task.h 
 // #define __init_task_data __attribute__((__section__(".data..init_task")))
 // arch/arm64/kernel/head.s 在内核启动时，打开mmu后，把sp指针关联到这个结构上，此处做为启动阶段内核的调用栈使用
-// tx2 下 init_thread_union 结构体里，定义的时候是空
+// tx2 下 init_thread_union 结构体里，定义的时候是空，此处纯粹分配了一个结构的空间
 union thread_union init_thread_union __init_task_data = {
 #ifndef CONFIG_THREAD_INFO_IN_TASK   // tx2 定义了 CONFIG_THREAD_INFO_IN_TASK
 	INIT_THREAD_INFO(init_task)

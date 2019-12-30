@@ -64,12 +64,15 @@
 #include <asm/xen/hypervisor.h>
 #include <asm/mmu_context.h>
 
-phys_addr_t __fdt_pointer __initdata;   // __fdt_pointer 的值在 arch/arm64/kernel/head.s 函数 __primary_switched 里赋值
+// phys_addr_t __fdt_pointer __initdata;   为了阅读代码方便，把这行注释掉，改成下一行的写法．
+phys_addr_t __fdt_pointer;              // __fdt_pointer 的值在 arch/arm64/kernel/head.s 函数 __primary_switched 里赋值
                                         // 表示dtb的基地址
+                                        // setup_arch 里调用 setup_machine_fdt(__fdt_pointer) 解析设备树
 
 /*
  * Standard memory resources
  */
+// request_standard_resources 里赋值
 static struct resource mem_res[] = {
 	{
 		.name = "Kernel code",
@@ -84,7 +87,7 @@ static struct resource mem_res[] = {
 		.flags = IORESOURCE_SYSTEM_RAM
 	}
 };
-
+// request_standard_resources
 #define kernel_code mem_res[0]
 #define kernel_data mem_res[1]
 
@@ -96,6 +99,7 @@ u64 __cacheline_aligned boot_args[4];   // arch/arm64/kernel/head.s    preserve_
                                         // x0是dtb的物理地址，x1～x3必须是0（非零值是保留将来使用）。
                                         // 在后续 setup_arch 函数执行的时候会访问 boot_args 并进行校验。
 
+// start_kernel -> smp_setup_processor_id
 void __init smp_setup_processor_id(void)
 {
 	u64 mpidr = read_cpuid_mpidr() & MPIDR_HWID_BITMASK;
@@ -106,7 +110,7 @@ void __init smp_setup_processor_id(void)
 	 * using percpu variable early, for example, lockdep will
 	 * access percpu variable inside lock_release
 	 */
-	set_my_cpu_offset(0);  //设置当前cpu的编号，后续访问cpu变量时使用
+	set_my_cpu_offset(0);  //设置当前cpu变量的地址为无效地址
 	pr_info("Booting Linux on physical CPU 0x%lx\n", (unsigned long)mpidr);
 }
 
@@ -122,6 +126,7 @@ struct mpidr_hash mpidr_hash;
  *			  MPIDR value. Resulting algorithm is a collision
  *			  free hash carried out through shifting and ORing
  */
+// setup_arch -> smp_build_mpidr_hash
 static void __init smp_build_mpidr_hash(void)
 {
 	u32 i, affinity, fs[4], bits[4], ls;
@@ -198,7 +203,7 @@ static void __init setup_machine_fdt(phys_addr_t dt_phys)
 
 	dump_stack_set_arch_desc("%s (DT)", of_flat_dt_get_machine_name());
 }
-
+// setup_arch -> request_standard_resources
 static void __init request_standard_resources(void)
 {
 	struct memblock_region *region;
@@ -231,7 +236,8 @@ static void __init request_standard_resources(void)
 			request_resource(res, &kernel_data);
 	}
 }
-
+// smp_setup_processor_id 给这个数组赋值
+// 系统初始化时，给 __cpu_logical_map[0] 赋值
 u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
 EXPORT_SYMBOL_GPL(__cpu_logical_map);
 // start_kernel -> setup_arch
@@ -267,10 +273,10 @@ void __init setup_arch(char **cmdline_p)
 	cpu_uninstall_idmap();
 
 	xen_early_init();
-	efi_init();
-	arm64_memblock_init();
+	efi_init();  // tx2 这个是空
+	arm64_memblock_init();  // 初始化阶段使用的memblock
 
-	paging_init();
+	paging_init(); // 把内核和所有的物理内存都映射到内核运行空间
 
 	acpi_table_upgrade();
 
@@ -280,15 +286,15 @@ void __init setup_arch(char **cmdline_p)
 	if (acpi_disabled)  // tx2    acpi_disabled = 1
 		unflatten_device_tree();
 
-	bootmem_init();
+	bootmem_init(); // 生成管理内存的 section 和 page 结构
 
-	kasan_init();
+	kasan_init();  // tx2 可以忽略这个函数
 
 	request_standard_resources();
 
 	early_ioremap_reset();
 
-	if (acpi_disabled)
+	if (acpi_disabled) // tx2    acpi_disabled = 1
 		psci_dt_init();
 	else
 		psci_acpi_init();
@@ -297,7 +303,7 @@ void __init setup_arch(char **cmdline_p)
 	smp_init_cpus();
 	smp_build_mpidr_hash();
 
-#ifdef CONFIG_ARM64_SW_TTBR0_PAN
+#ifdef CONFIG_ARM64_SW_TTBR0_PAN // tx2 定义了 CONFIG_ARM64_SW_TTBR0_PAN
 	/*
 	 * Make sure init_thread_info.ttbr0 always generates translation
 	 * faults in case uaccess_enable() is inadvertently called by the init

@@ -32,7 +32,7 @@ struct memblock_region {
 	phys_addr_t base;
 	phys_addr_t size;
 	unsigned long flags;
-#ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP
+#ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP  // tx2 没有定义 CONFIG_HAVE_MEMBLOCK_NODE_MAP
 	int nid;
 #endif
 };
@@ -43,18 +43,19 @@ struct memblock_type {
 	phys_addr_t total_size;	/* size of all regions */
 	struct memblock_region *regions;
 };
-
+// memblock_alloc 使用了本结构
 struct memblock {
 	bool bottom_up;  /* is bottom up direction? */
 	phys_addr_t current_limit;
-	struct memblock_type memory;   // memblock_add 里修改
-	struct memblock_type reserved;
+	struct memblock_type memory;   // memblock_add 里修改   读　dtb 表 和 memblock_init 时，都会修改
+	                                // arm64_memblock_init 里引用
+	struct memblock_type reserved;  // memblock_reserve 里操作
 #ifdef CONFIG_HAVE_MEMBLOCK_PHYS_MAP
 	struct memblock_type physmem;
 #endif
 };
 
-extern struct memblock memblock;
+extern struct memblock memblock;  // ./mm/memblock.c 里定义
 extern int memblock_debug;
 #ifdef CONFIG_MOVABLE_NODE
 /* If movable_node boot option specified */
@@ -267,7 +268,7 @@ static inline void memblock_clear_region_flags(struct memblock_region *r,
 	r->flags &= ~flags;
 }
 
-#ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP
+#ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP   // tx2 没有定义 CONFIG_HAVE_MEMBLOCK_NODE_MAP
 int memblock_set_node(phys_addr_t base, phys_addr_t size,
 		      struct memblock_type *type, int nid);
 
@@ -284,7 +285,7 @@ static inline int memblock_get_region_node(const struct memblock_region *r)
 static inline void memblock_set_region_node(struct memblock_region *r, int nid)
 {
 }
-
+// arm64_memory_present -> memblock_get_region_node         tx2 调用流程
 static inline int memblock_get_region_node(const struct memblock_region *r)
 {
 	return 0;
@@ -296,7 +297,7 @@ phys_addr_t memblock_alloc_try_nid(phys_addr_t size, phys_addr_t align, int nid)
 
 phys_addr_t memblock_alloc(phys_addr_t size, phys_addr_t align);
 
-#ifdef CONFIG_MOVABLE_NODE
+#ifdef CONFIG_MOVABLE_NODE // tx2 没有定义 CONFIG_MOVABLE_NODE
 /*
  * Set the allocation direction to bottom-up or top-down.
  */
@@ -316,6 +317,7 @@ static inline bool memblock_bottom_up(void)
 }
 #else
 static inline void __init memblock_set_bottom_up(bool enable) {}
+// memblock_find_in_range_node -> memblock_bottom_up
 static inline bool memblock_bottom_up(void) { return false; }
 #endif
 
@@ -344,7 +346,7 @@ bool memblock_is_reserved(phys_addr_t addr);
 bool memblock_is_region_reserved(phys_addr_t base, phys_addr_t size);
 
 extern void __memblock_dump_all(void);
-
+// bootmem_init -> memblock_dump_all
 static inline void memblock_dump_all(void)
 {
 	if (memblock_debug)
@@ -416,7 +418,7 @@ static inline unsigned long memblock_region_reserved_end_pfn(const struct memblo
 	     idx < memblock_type->cnt;					\
 	     idx++, rgn = &memblock_type->regions[idx])
 
-#ifdef CONFIG_MEMTEST
+#ifdef CONFIG_MEMTEST  // tx2 定义了 CONFIG_MEMTEST
 extern void early_memtest(phys_addr_t start, phys_addr_t end);
 #else
 static inline void early_memtest(phys_addr_t start, phys_addr_t end)

@@ -54,10 +54,10 @@ struct kmem_cache {
  */
 enum slab_state {
 	DOWN,			/* No slab functionality yet */
-	PARTIAL,		/* SLUB: kmem_cache_node available */
+	PARTIAL,		/* SLUB: kmem_cache_node available */  // kmem_cache_init
 	PARTIAL_NODE,		/* SLAB: kmalloc size for node struct available */
-	UP,			/* Slab caches usable but not all extras yet */
-	FULL			/* Everything is working */
+	UP,			/* Slab caches usable but not all extras yet */  // create_kmalloc_caches
+	FULL			/* Everything is working */  // slab_sysfs_init
 };
 
 extern enum slab_state slab_state;
@@ -425,6 +425,8 @@ static inline void slab_post_alloc_hook(struct kmem_cache *s, gfp_t flags,
 /*
  * The slab lists for all objects.
  */
+// init_kmem_cache_node 里初始化
+// kmem_cache.node
 struct kmem_cache_node {
 	spinlock_t list_lock;
 

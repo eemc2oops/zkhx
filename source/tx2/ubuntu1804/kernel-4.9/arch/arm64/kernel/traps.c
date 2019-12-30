@@ -781,7 +781,7 @@ int is_valid_bugaddr(unsigned long addr)
 	 */
 	return 1;
 }
-
+// 注册在 bug_break_hook 结构里
 static int bug_handler(struct pt_regs *regs, unsigned int esr)
 {
 	if (user_mode(regs))
@@ -824,6 +824,7 @@ int __init early_brk64(unsigned long addr, unsigned int esr,
 }
 
 /* This registration must happen early, before debug_traps_init(). */
+// start_kernel -> trap_init
 void __init trap_init(void)
 {
 	register_break_hook(&bug_break_hook);

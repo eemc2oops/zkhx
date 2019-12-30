@@ -77,6 +77,8 @@
  */
 #define PGDIR_SHIFT		ARM64_HW_PGTABLE_LEVEL_SHIFT(4 - CONFIG_PGTABLE_LEVELS)   // tx2 : 0x1e  30
 #define PGDIR_SIZE		(_AC(1, UL) << PGDIR_SHIFT)   // tx2 : 0x40000000   1G
+                                                     // tx2是39bit虚拟地址 转换表规则是 9:9:9:12　　
+                                                     // PGD占最高9bit，所以一个PGD表项表示剩余的 9+9+12=30个bit位宽的地址，即1G
 #define PGDIR_MASK		(~(PGDIR_SIZE-1))     // tx2 : 0xffffffffc0000000
 #define PTRS_PER_PGD		(1 << (VA_BITS - PGDIR_SHIFT))  // tx2 : 0x200  512
 

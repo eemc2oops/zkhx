@@ -26,9 +26,11 @@
 #include "slab.h"
 
 enum slab_state slab_state;
-LIST_HEAD(slab_caches);
+// LIST_HEAD(slab_caches);  源码定义是这一行，为了走读方便，改成下一行
+struct list_head slab_caches = { &(slab_caches), &(slab_caches) }; // kmem_cache.list 挂在这个队例里 
+                                                                   // bootstrap 里挂队例
 DEFINE_MUTEX(slab_mutex);
-struct kmem_cache *kmem_cache;
+struct kmem_cache *kmem_cache;  // kmem_cache_init 里初始化
 
 /*
  * Set of flags that will prevent slab merging
@@ -133,6 +135,7 @@ int __kmem_cache_alloc_bulk(struct kmem_cache *s, gfp_t flags, size_t nr,
 }
 
 #if defined(CONFIG_MEMCG) && !defined(CONFIG_SLOB)
+// create_boot_cache -> slab_init_memcg_params
 void slab_init_memcg_params(struct kmem_cache *s)
 {
 	s->memcg_params.is_root_cache = true;
@@ -301,6 +304,7 @@ struct kmem_cache *find_mergeable(size_t size, size_t align,
  * Figure out what the alignment of the objects will be given a set of
  * flags, a user specified alignment and the size of the objects.
  */
+// create_boot_cache -> calculate_alignment
 unsigned long calculate_alignment(unsigned long flags,
 		unsigned long align, unsigned long size)
 {
@@ -795,8 +799,9 @@ bool slab_is_available(void)
 	return slab_state >= UP;
 }
 
-#ifndef CONFIG_SLOB
+#ifndef CONFIG_SLOB  // tx2 没有定义 CONFIG_SLOB
 /* Create a cache during boot when no slab services are available yet */
+// kmem_cache_init -> create_boot_cache
 void __init create_boot_cache(struct kmem_cache *s, const char *name, size_t size,
 		unsigned long flags)
 {
@@ -806,7 +811,7 @@ void __init create_boot_cache(struct kmem_cache *s, const char *name, size_t siz
 	s->size = s->object_size = size;
 	s->align = calculate_alignment(flags, ARCH_KMALLOC_MINALIGN, size);
 
-	slab_init_memcg_params(s);
+	slab_init_memcg_params(s);  // 内部队列初始化
 
 	err = __kmem_cache_create(s, flags);
 
@@ -845,14 +850,15 @@ EXPORT_SYMBOL(kmalloc_dma_caches);
  * of two cache sizes there. The size of larger slabs can be determined using
  * fls.
  */
+// setup_kmalloc_cache_index_table
 static s8 size_index[24] = {
-	3,	/* 8 */
-	4,	/* 16 */
-	5,	/* 24 */
-	5,	/* 32 */
-	6,	/* 40 */
-	6,	/* 48 */
-	6,	/* 56 */
+	3,	/* 8 */     // tx2 setup_kmalloc_cache_index_table 改成 6
+	4,	/* 16 */    // tx2 setup_kmalloc_cache_index_table 改成 6
+	5,	/* 24 */    // tx2 setup_kmalloc_cache_index_table 改成 6
+	5,	/* 32 */    // tx2 setup_kmalloc_cache_index_table 改成 6
+	6,	/* 40 */    // tx2 setup_kmalloc_cache_index_table 改成 6
+	6,	/* 48 */    // tx2 setup_kmalloc_cache_index_table 改成 6
+	6,	/* 56 */    // tx2 setup_kmalloc_cache_index_table 改成 6
 	6,	/* 64 */
 	1,	/* 72 */
 	1,	/* 80 */
@@ -942,6 +948,7 @@ static struct {
  * Make sure that nothing crazy happens if someone starts tinkering
  * around with ARCH_KMALLOC_MINALIGN
  */
+// kmem_cache_init -> setup_kmalloc_cache_index_table
 void __init setup_kmalloc_cache_index_table(void)
 {
 	int i;
@@ -949,15 +956,15 @@ void __init setup_kmalloc_cache_index_table(void)
 	BUILD_BUG_ON(KMALLOC_MIN_SIZE > 256 ||
 		(KMALLOC_MIN_SIZE & (KMALLOC_MIN_SIZE - 1)));
 
-	for (i = 8; i < KMALLOC_MIN_SIZE; i += 8) {
-		int elem = size_index_elem(i);
+	for (i = 8; i < KMALLOC_MIN_SIZE; i += 8) {  // tx2 : KMALLOC_MIN_SIZE = 64
+		int elem = size_index_elem(i);  // elem : 0,1,2,3,4,5,6
 
 		if (elem >= ARRAY_SIZE(size_index))
 			break;
 		size_index[elem] = KMALLOC_SHIFT_LOW;
 	}
 
-	if (KMALLOC_MIN_SIZE >= 64) {
+	if (KMALLOC_MIN_SIZE >= 64) {  // tx2 　KMALLOC_MIN_SIZE = 64
 		/*
 		 * The 96 byte size cache is not used if the alignment
 		 * is 64 byte.

@@ -73,6 +73,9 @@
 #include <linux/atomic.h>
 
 #include "slab.h"
+
+// tx2 没有编译这个文件
+
 /*
  * slob_block has a field 'units', which indicates size of block if +ve,
  * or offset of next block if -ve (in SLOB_UNITs).

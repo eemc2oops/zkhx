@@ -27,7 +27,7 @@
 #include <asm/sparsemem.h>
 
 /* SECTION_SHIFT	#bits space required to store a section # */
-#define SECTIONS_SHIFT	(MAX_PHYSMEM_BITS - SECTION_SIZE_BITS)
+#define SECTIONS_SHIFT	(MAX_PHYSMEM_BITS - SECTION_SIZE_BITS)    // 18 : 48 - 30 
 
 #endif /* CONFIG_SPARSEMEM */
 
@@ -85,8 +85,8 @@
  * We are going to use the flags for the page to node mapping if its in
  * there.  This includes the case where there is no node, so it is implicit.
  */
-#if !(NODES_WIDTH > 0 || NODES_SHIFT == 0)
-#define NODE_NOT_IN_PAGE_FLAGS
+#if !(NODES_WIDTH > 0 || NODES_SHIFT == 0)   //   tx2 : NODES_SHIFT = 0
+#define NODE_NOT_IN_PAGE_FLAGS         // tx2 不会定义 NODE_NOT_IN_PAGE_FLAGS
 #endif
 
 #if defined(CONFIG_NUMA_BALANCING) && LAST_CPUPID_WIDTH == 0

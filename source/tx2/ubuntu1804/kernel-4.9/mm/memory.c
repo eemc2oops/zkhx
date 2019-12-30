@@ -80,10 +80,13 @@
 #warning Unfortunate NUMA and NUMA Balancing config, growing page-frame for last_cpupid.
 #endif
 
-#ifndef CONFIG_NEED_MULTIPLE_NODES
+#ifndef CONFIG_NEED_MULTIPLE_NODES   // tx2 没有定义 CONFIG_NEED_MULTIPLE_NODES
 /* use the per-pgdat data instead for discontigmem - mbligh */
-unsigned long max_mapnr;
-struct page *mem_map;
+unsigned long max_mapnr;  // 最小page结构地址和最大page结构地址的差值
+                         // set_max_mapnr 里赋值
+                        // tx2 : 0xfffffffefc1f7200 (18446744069349536256)
+struct page *mem_map;  // tx2 : NULL 
+                       // mem_init 里使用
 
 EXPORT_SYMBOL(max_mapnr);
 EXPORT_SYMBOL(mem_map);

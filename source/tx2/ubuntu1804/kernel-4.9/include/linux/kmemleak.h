@@ -23,7 +23,7 @@
 
 #include <linux/slab.h>
 
-#ifdef CONFIG_DEBUG_KMEMLEAK
+#ifdef CONFIG_DEBUG_KMEMLEAK  // TX2 定义了 CONFIG_DEBUG_KMEMLEAK
 
 extern void kmemleak_init(void) __init;
 extern void kmemleak_alloc(const void *ptr, size_t size, int min_count,

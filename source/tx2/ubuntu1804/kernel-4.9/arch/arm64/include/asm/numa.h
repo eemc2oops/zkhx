@@ -36,8 +36,9 @@ void __init numa_free_distance(void);
 void __init early_map_cpu_to_node(unsigned int cpu, int nid);
 void numa_store_cpu_info(unsigned int cpu);
 
-#else	/* CONFIG_NUMA */
+#else	/* CONFIG_NUMA */  // tx2 没有定义 CONFIG_NUMA
 
+// tx2 这几个函数是空
 static inline void numa_store_cpu_info(unsigned int cpu) { }
 static inline void arm64_numa_init(void) { }
 static inline void early_map_cpu_to_node(unsigned int cpu, int nid) { }

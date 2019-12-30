@@ -17,6 +17,8 @@
 
 #include <linux/bug.h>
 
+// x表示fix虚拟址址的分块下标
+// 计算fix内存段的虚拟地址
 #define __fix_to_virt(x)	(FIXADDR_TOP - ((x) << PAGE_SHIFT))
 #define __virt_to_fix(x)	((FIXADDR_TOP - ((x)&PAGE_MASK)) >> PAGE_SHIFT)
 
@@ -77,7 +79,7 @@ static inline unsigned long virt_to_fix(const unsigned long vaddr)
 	________addr = fix_to_virt(idx) + ((phys) & (PAGE_SIZE - 1));	\
 	________addr;							\
 })
-
+// 找到idx对应的虚拟地址,映射到phys对齐后的物理地址phys'上，并且返回phys物理地址对应的虚拟地址
 #define set_fixmap_offset(idx, phys) \
 	__set_fixmap_offset(idx, phys, FIXMAP_PAGE_NORMAL)
 

@@ -21,16 +21,23 @@
  *
  * 1) mem_section	- memory sections, mem_map's for valid memory
  */
-#ifdef CONFIG_SPARSEMEM_EXTREME
-struct mem_section *mem_section[NR_SECTION_ROOTS]
-	____cacheline_internodealigned_in_smp;
+#ifdef CONFIG_SPARSEMEM_EXTREME  // tx2 定义了 CONFIG_SPARSEMEM_EXTREME
+// struct mem_section *mem_section[NR_SECTION_ROOTS] ____cacheline_internodealigned_in_smp; 源码定义是这一行，走读，改成下一行
+struct mem_section *mem_section[NR_SECTION_ROOTS];    // 记录哪些物理页面是存在的 memory_present
+                                                    // 一条记录表示 1G区段 的物理内存，
+                                                    // 第几个1G的物理内存存在，就在 mem_section 对应的 root   　里的 section 位置置标志
+                                                    // tx2 : 共有 1024 个 root
+                                                     // tx2 : 每个root下面放 256 个 section     　　参见 sparse_index_init 
+                                                     // 一个 mem_section 的大小是16字节，一页4K内存，刚好可以放 256个 section
+                                                     // 所以一个root分配一个物理页面用来保存 mem_section 信息
+                                                     // arm64 有48bit物理地址线，共有 256K 个 1G，所以root是1024个
 #else
-struct mem_section mem_section[NR_SECTION_ROOTS][SECTIONS_PER_ROOT]
-	____cacheline_internodealigned_in_smp;
+// struct mem_section mem_section[NR_SECTION_ROOTS][SECTIONS_PER_ROOT] ____cacheline_internodealigned_in_smp; 源码定义是这一行，走读，改成下一行
+struct mem_section mem_section[NR_SECTION_ROOTS][SECTIONS_PER_ROOT];
 #endif
 EXPORT_SYMBOL(mem_section);
 
-#ifdef NODE_NOT_IN_PAGE_FLAGS
+#ifdef NODE_NOT_IN_PAGE_FLAGS   // tx2 没有定义 NODE_NOT_IN_PAGE_FLAGS
 /*
  * If we did not store the node number in the page then we have to
  * do a lookup in the section_to_node_table in order to find which
@@ -53,12 +60,14 @@ static void set_section_nid(unsigned long section_nr, int nid)
 	section_to_node_table[section_nr] = nid;
 }
 #else /* !NODE_NOT_IN_PAGE_FLAGS */
+// memory_present -> set_section_nid
 static inline void set_section_nid(unsigned long section_nr, int nid)
 {
 }
 #endif
 
-#ifdef CONFIG_SPARSEMEM_EXTREME
+#ifdef CONFIG_SPARSEMEM_EXTREME  // tx2 定义了 CONFIG_SPARSEMEM_EXTREME
+// sparse_index_init -> sparse_index_alloc
 static noinline struct mem_section __ref *sparse_index_alloc(int nid)
 {
 	struct mem_section *section = NULL;
@@ -76,10 +85,10 @@ static noinline struct mem_section __ref *sparse_index_alloc(int nid)
 
 	return section;
 }
-
+// memory_present -> sparse_index_init
 static int __meminit sparse_index_init(unsigned long section_nr, int nid)
 {
-	unsigned long root = SECTION_NR_TO_ROOT(section_nr);
+	unsigned long root = SECTION_NR_TO_ROOT(section_nr);  // 每个  root 里面会放 256 个 section
 	struct mem_section *section;
 
 	if (mem_section[root])
@@ -139,10 +148,12 @@ static inline unsigned long sparse_encode_early_nid(int nid)
 
 static inline int sparse_early_nid(struct mem_section *section)
 {
-	return (section->section_mem_map >> SECTION_NID_SHIFT);
+	return (section->section_mem_map >> SECTION_NID_SHIFT);  // 取 nid
+	                                                        //  tx2 的 nid 是 0
 }
 
 /* Validate the physical addressing limitations of the model */
+// memory_present -> mminit_validate_memmodel_limits
 void __meminit mminit_validate_memmodel_limits(unsigned long *start_pfn,
 						unsigned long *end_pfn)
 {
@@ -169,6 +180,22 @@ void __meminit mminit_validate_memmodel_limits(unsigned long *start_pfn,
 }
 
 /* Record a memory area against a node. */
+
+// start :  起始地址页对齐以后，表示从０编址的第几个页的 index
+// end : 结束地址页对齐以后，表示从０编址的第几个页的 index
+// start,end 都表示 pfn   physical frame number
+
+// arm64_memory_present -> memory_present
+
+/*
+tx2 : 
+start 0x0000000000080000   end 0x00000000000f0000           section 2, 3
+start 0x00000000000c0000   end 0x0000000000275800           section 3, 4, 5, 6, 7, 8, 9
+start 0x0000000000240000   end 0x0000000000276000           section 9
+start 0x0000000000240000   end 0x0000000000276800           section 9
+start 0x0000000000240000   end 0x0000000000277200           section 9
+
+*/
 void __init memory_present(int nid, unsigned long start, unsigned long end)
 {
 	unsigned long pfn;
@@ -176,11 +203,13 @@ void __init memory_present(int nid, unsigned long start, unsigned long end)
 	start &= PAGE_SECTION_MASK;
 	mminit_validate_memmodel_limits(&start, &end);
 	for (pfn = start; pfn < end; pfn += PAGES_PER_SECTION) {
-		unsigned long section = pfn_to_section_nr(pfn);
+		unsigned long section = pfn_to_section_nr(pfn);  // pfn >> 18
+		                                                //  tx2 : 由于参数已经是第几页的索引 (addr >> 12)，再把索引偏移18，表示在 L0 转换表里的索引
+		                                                //        所以，一个section表示第几个1G的物理内存段
 		struct mem_section *ms;
 
-		sparse_index_init(section, nid);
-		set_section_nid(section, nid);
+		sparse_index_init(section, nid);  // 在 全局 section 表里生成 保存 section 的结构
+		set_section_nid(section, nid);  // tx2 空函数
 
 		ms = __nr_to_section(section);
 		if (!ms->section_mem_map)
@@ -216,6 +245,7 @@ unsigned long __init node_memmap_size_bytes(int nid, unsigned long start_pfn,
  * the identity pfn - section_mem_map will return the actual
  * physical page frame number.
  */
+// sparse_init_one_section -> sparse_encode_mem_map
 static unsigned long sparse_encode_mem_map(struct page *mem_map, unsigned long pnum)
 {
 	return (unsigned long)(mem_map - (section_nr_to_pfn(pnum)));
@@ -230,9 +260,9 @@ struct page *sparse_decode_mem_map(unsigned long coded_mem_map, unsigned long pn
 	coded_mem_map &= SECTION_MAP_MASK;
 	return ((struct page *)coded_mem_map) + section_nr_to_pfn(pnum);
 }
-
-static int __meminit sparse_init_one_section(struct mem_section *ms,
-		unsigned long pnum, struct page *mem_map,
+// sparse_init -> sparse_init_one_section
+static int __meminit sparse_init_one_section(struct mem_section *ms,  // 
+		unsigned long pnum, struct page *mem_map,  // pnum : section 对应的 id    mem_map : section 对应的第一个 map
 		unsigned long *pageblock_bitmap)
 {
 	if (!present_section(ms))
@@ -262,6 +292,7 @@ static unsigned long *__kmalloc_section_usemap(void)
 #endif /* CONFIG_MEMORY_HOTPLUG */
 
 #ifdef CONFIG_MEMORY_HOTREMOVE
+// sparse_early_usemaps_alloc_node -> sparse_early_usemaps_alloc_pgdat_section
 static unsigned long * __init
 sparse_early_usemaps_alloc_pgdat_section(struct pglist_data *pgdat,
 					 unsigned long size)
@@ -292,7 +323,7 @@ again:
 	}
 	return p;
 }
-
+// sparse_early_usemaps_alloc_node -> check_usemap_section_nr
 static void __init check_usemap_section_nr(int nid, unsigned long *usemap)
 {
 	unsigned long usemap_snr, pgdat_snr;
@@ -301,8 +332,9 @@ static void __init check_usemap_section_nr(int nid, unsigned long *usemap)
 	struct pglist_data *pgdat = NODE_DATA(nid);
 	int usemap_nid;
 
-	usemap_snr = pfn_to_section_nr(__pa(usemap) >> PAGE_SHIFT);
-	pgdat_snr = pfn_to_section_nr(__pa(pgdat) >> PAGE_SHIFT);
+	usemap_snr = pfn_to_section_nr(__pa(usemap) >> PAGE_SHIFT); // usemap 对应的 section id
+	pgdat_snr = pfn_to_section_nr(__pa(pgdat) >> PAGE_SHIFT);  // pgdat 对应的 section id
+	                                                        // tx2  usemap_snr 和 pgdat_snr 都是 2
 	if (usemap_snr == pgdat_snr)
 		return;
 
@@ -340,17 +372,19 @@ static void __init check_usemap_section_nr(int nid, unsigned long *usemap)
 {
 }
 #endif /* CONFIG_MEMORY_HOTREMOVE */
-
+// sparse_init -> alloc_usemap_and_memmap -> sparse_early_usemaps_alloc_node (pnum_begin 2, pnum_end 262144 (256K) 最大section个数, count 8, nid 0)
 static void __init sparse_early_usemaps_alloc_node(void *data,
-				 unsigned long pnum_begin,
-				 unsigned long pnum_end,
-				 unsigned long usemap_count, int nodeid)
+				 unsigned long pnum_begin, // 起始 section id
+				 unsigned long pnum_end,   // 结束 section id
+				 unsigned long usemap_count, // 要申请多少个usemap (共有多少个 匹配上的 section)
+				 int nodeid)  // nid tx2里衡为 0
 {
 	void *usemap;
 	unsigned long pnum;
 	unsigned long **usemap_map = (unsigned long **)data;
-	int size = usemap_size();
-
+	int size = usemap_size();  // tx2 size : 256 ( 0x100 )
+                                // 表示一个section有256个字节的usemap
+    
 	usemap = sparse_early_usemaps_alloc_pgdat_section(NODE_DATA(nodeid),
 							  size * usemap_count);
 	if (!usemap) {
@@ -434,7 +468,7 @@ void __init sparse_mem_maps_populate_node(struct page **map_map,
 }
 #endif /* !CONFIG_SPARSEMEM_VMEMMAP */
 
-#ifdef CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER
+#ifdef CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER   // tx2 没有定义 CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER 宏
 static void __init sparse_early_mem_maps_alloc_node(void *data,
 				 unsigned long pnum_begin,
 				 unsigned long pnum_end,
@@ -445,8 +479,9 @@ static void __init sparse_early_mem_maps_alloc_node(void *data,
 					 map_count, nodeid);
 }
 #else
-static struct page __init *sparse_early_mem_map_alloc(unsigned long pnum)
-{
+// sparse_init -> sparse_early_mem_map_alloc
+static struct page __init *sparse_early_mem_map_alloc(unsigned long pnum)  // pnum 表示 section id
+{                                                                         // 创建 section id 对应的 page 结构
 	struct page *map;
 	struct mem_section *ms = __nr_to_section(pnum);
 	int nid = sparse_early_nid(ms);
@@ -470,6 +505,7 @@ void __weak __meminit vmemmap_populate_print_last(void)
  *  alloc_usemap_and_memmap - memory alloction for pageblock flags and vmemmap
  *  @map: usemap_map for pageblock flags or mmap_map for vmemmap
  */
+// sparse_init -> alloc_usemap_and_memmap  (alloc_func = sparse_early_usemaps_alloc_node)
 static void __init alloc_usemap_and_memmap(void (*alloc_func)
 					(void *, unsigned long, unsigned long,
 					unsigned long, int), void *data)
@@ -512,13 +548,18 @@ static void __init alloc_usemap_and_memmap(void (*alloc_func)
 	}
 	/* ok, last chunk */
 	alloc_func(data, pnum_begin, NR_MEM_SECTIONS,
-						map_count, nodeid_begin);
+						map_count, nodeid_begin);  /*   tx2 的 nid 为0 ，只会调用这里一次
+						                            pum_begin 表示 第几个 section
+						                            nodeid_begin 表示 nid　tx2里 nid都是0
+						                            map_count 当前 nid 下面有多少个 section
+						                           */
 }
 
 /*
  * Allocate the accumulated non-linear sections, allocate a mem_map
  * for each and record the physical to section mapping.
  */
+// bootmem_init -> sparse_init
 void __init sparse_init(void)
 {
 	unsigned long pnum;
@@ -535,7 +576,7 @@ void __init sparse_init(void)
 	BUILD_BUG_ON(!is_power_of_2(sizeof(struct mem_section)));
 
 	/* Setup pageblock_order for HUGETLB_PAGE_SIZE_VARIABLE */
-	set_pageblock_order();
+	set_pageblock_order();  // tx2 空函数
 
 	/*
 	 * map is using big page (aka 2M in x86 64 bit)
@@ -548,14 +589,43 @@ void __init sparse_init(void)
 	 * powerpc need to call sparse_init_one_section right after each
 	 * sparse_early_mem_map_alloc, so allocate usemap_map at first.
 	 */
-	size = sizeof(unsigned long *) * NR_MEM_SECTIONS;
-	usemap_map = memblock_virt_alloc(size, 0);
+	size = sizeof(unsigned long *) * NR_MEM_SECTIONS;  // tx2 : size = 8 * 256K = 2M
+	usemap_map = memblock_virt_alloc(size, 0);     // 为每个 section 分配一个对应的指针 保存在 usemap_map 
 	if (!usemap_map)
 		panic("can not allocate usemap_map\n");
 	alloc_usemap_and_memmap(sparse_early_usemaps_alloc_node,
-							(void *)usemap_map);
+							(void *)usemap_map);    /* tx2 的 section id 是 2,3,4,5,6,7,8,9
+							                           所以本函数执行完以后，usemap_map　本身的内存会释放，但是指向的位表区会保存到section里面
+							                            +----------------+------------------+-------------------+
+							                            | 偏移             |   长度             | 指向的内存地址           |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[0]  |   NULL           |                   |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[1]  |   NULL           |                   |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[2]  |   256字节          | 0-255             |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[3]  |   256字节          | 256-511           |
+							                            +----------------+------------------+-------------------+
+							                            | .............  |   256字节          | .....             |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[7]  |   256字节          | 7*256 - 8*256-1   |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[8]  |   256字节          | 8*256 - 9*256-1   |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[9]  |   256字节          | 9*256 - 10*256-1  |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[10] |   NULL           |                   |
+							                            +----------------+------------------+-------------------+
+							                            | usemap_map[11] |   NULL           |                   |
+							                            +----------------+------------------+-------------------+
+							                            | .............  |   NULL           | .....             |
+							                            +----------------+------------------+-------------------+
+							                            |usemap_map[2M-1]|   NULL           | .....             |
+							                            +----------------+------------------+-------------------+
+							                        */
 
-#ifdef CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER
+#ifdef CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER   // tx2 没有定义 CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER
 	size2 = sizeof(struct page *) * NR_MEM_SECTIONS;
 	map_map = memblock_virt_alloc(size2, 0);
 	if (!map_map)
@@ -572,16 +642,16 @@ void __init sparse_init(void)
 		if (!usemap)
 			continue;
 
-#ifdef CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER
+#ifdef CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER // tx2 没有定义 CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER
 		map = map_map[pnum];
 #else
-		map = sparse_early_mem_map_alloc(pnum);
+		map = sparse_early_mem_map_alloc(pnum);  // 创建 section id 对应的 page 结构
 #endif
 		if (!map)
 			continue;
 
 		sparse_init_one_section(__nr_to_section(pnum), pnum, map,
-								usemap);
+								usemap);  // 建立 section 与 page 的关联关系，并且 section 的 bitmap
 	}
 
 	vmemmap_populate_print_last();
