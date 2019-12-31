@@ -99,7 +99,7 @@ struct thread_info {
 #define TIF_FREEZE		19
 #define TIF_RESTORE_SIGMASK	20
 #define TIF_SINGLESTEP		21  //  中断调用时　disable_step_tsk 里会清这个标志位
-#define TIF_32BIT		22	/* 32bit process */
+#define TIF_32BIT		22	/* 32bit process */  // TASK_SIZE 宏会判断这个标志
 #define TIF_SSBD		23	/* Wants SSB mitigation */
 #define TIF_DEPRECATED_WARN	31
 

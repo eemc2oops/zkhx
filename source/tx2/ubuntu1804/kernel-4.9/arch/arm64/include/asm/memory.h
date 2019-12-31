@@ -136,8 +136,9 @@ memory  : 0xffffffc000000000 - 0xffffffc1f7200000   (  8050 MB)
 #define VA_START		(UL(0xffffffffffffffff) - (UL(1) << VA_BITS) + 1)       // 内核虚拟地址的起始地址     
                                                                                 // 地址宽度是  　39 时      VA_START = 0xffffff80_00000000
 #define PAGE_OFFSET		(UL(0xffffffffffffffff) - (UL(1) << (VA_BITS - 1)) + 1)   //  内核里映像看到的物理内存映射起始地址
+                                                                                // 内核线性映射的起始地址，从内核空间的一半开始增长
                                                                                   //  地址宽度是 39 时 PAGE_OFFSET = 0xffffffC0_00000000
-                                                                                  // tx2 : 0xffffffc000000000
+                                                                                  // tx2 : 0xffffffc0_00000000
 #define KIMAGE_VADDR		(MODULES_END)                      // kernel image start address
                                                                // tx2 : 0xffffff8008000000
 #define MODULES_END		(MODULES_VADDR + MODULES_VSIZE)        // 内核模块的结束地址

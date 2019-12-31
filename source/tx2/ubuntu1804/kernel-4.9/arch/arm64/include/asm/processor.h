@@ -19,7 +19,8 @@
 #ifndef __ASM_PROCESSOR_H
 #define __ASM_PROCESSOR_H
 
-#define TASK_SIZE_64		(UL(1) << VA_BITS)
+#define TASK_SIZE_64		(UL(1) << VA_BITS)  // 表示用户进程的空间大小
+                                                // tx2 : 512G 
 
 #define KERNEL_DS	UL(-1)
 #define USER_DS		(TASK_SIZE_64 - 1)
