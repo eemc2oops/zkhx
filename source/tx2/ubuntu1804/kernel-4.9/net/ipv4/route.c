@@ -466,8 +466,12 @@ static struct neighbour *ipv4_neigh_lookup(const struct dst_entry *dst,
 
 #define IP_IDENTS_SZ 2048u
 
-static atomic_t *ip_idents __read_mostly;
-static u32 *ip_tstamps __read_mostly;
+// static atomic_t *ip_idents __read_mostly; // 源码定义在这一行
+static atomic_t *ip_idents;
+
+// static u32 *ip_tstamps __read_mostly; // 源码定义在这一行
+static u32 *ip_tstamps;
+
 
 /* In order to protect privacy, we add a perturbation to identifiers
  * if one generator is seldom used. This makes hard for an attacker
@@ -2914,6 +2918,7 @@ static __net_initdata struct pernet_operations ipv4_inetpeer_ops = {
 struct ip_rt_acct __percpu *ip_rt_acct __read_mostly;
 #endif /* CONFIG_IP_ROUTE_CLASSID */
 
+// ip_init -> ip_rt_init
 int __init ip_rt_init(void)
 {
 	int rc = 0;

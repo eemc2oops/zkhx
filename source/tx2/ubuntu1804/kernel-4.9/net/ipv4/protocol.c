@@ -28,10 +28,21 @@
 #include <linux/spinlock.h>
 #include <net/protocol.h>
 
-const struct net_protocol __rcu *inet_protos[MAX_INET_PROTOS] __read_mostly;
-const struct net_offload __rcu *inet_offloads[MAX_INET_PROTOS] __read_mostly;
-EXPORT_SYMBOL(inet_offloads);
+// const struct net_protocol __rcu *inet_protos[MAX_INET_PROTOS] __read_mostly;  // 源码定义在这一行。
+const struct net_protocol *inet_protos[MAX_INET_PROTOS];  // inet_add_protocol 里添加支持的协议
+											// inet_protos[IPPROTO_ICMP] = icmp_protocol
+											// inet_protos[IPPROTO_UDP] = udp_protocol
+											// inet_protos[IPPROTO_TCP] = tcp_protocol
+											// inet_protos[IPPROTO_IGMP] = igmp_protocol
 
+// const struct net_offload __rcu *inet_offloads[MAX_INET_PROTOS] __read_mostly; // 源码定义在这一行
+const struct net_offload *inet_offloads[MAX_INET_PROTOS];
+
+EXPORT_SYMBOL(inet_offloads);
+// inet_init -> inet_add_protocol(&icmp_protocol, IPPROTO_ICMP)
+// inet_init -> inet_add_protocol(&udp_protocol, IPPROTO_UDP)
+// inet_init -> inet_add_protocol(&tcp_protocol, IPPROTO_TCP)
+// inet_init -> inet_add_protocol(&igmp_protocol, IPPROTO_IGMP)
 int inet_add_protocol(const struct net_protocol *prot, unsigned char protocol)
 {
 	if (!prot->netns_ok) {

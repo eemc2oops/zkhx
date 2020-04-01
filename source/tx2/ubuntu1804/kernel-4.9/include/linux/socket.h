@@ -205,11 +205,12 @@ struct ucred {
 
 #define AF_MAX		43	/* For now.. */
 
+// 以下是 sys_socket 接口的 family 参数	
 /* Protocol families, same as address families. */
 #define PF_UNSPEC	AF_UNSPEC
 #define PF_UNIX		AF_UNIX
 #define PF_LOCAL	AF_LOCAL
-#define PF_INET		AF_INET
+#define PF_INET		AF_INET    // inet_family_ops
 #define PF_AX25		AF_AX25
 #define PF_IPX		AF_IPX
 #define PF_APPLETALK	AF_APPLETALK

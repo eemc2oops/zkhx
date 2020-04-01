@@ -45,7 +45,7 @@ struct compat_delta {
 	unsigned int offset; /* offset in kernel */
 	int delta; /* delta in 32bit user land */
 };
-
+// xt_init 里申请空间
 struct xt_af {
 	struct mutex mutex;
 	struct list_head match;
@@ -58,7 +58,8 @@ struct xt_af {
 #endif
 };
 
-static struct xt_af *xt;
+static struct xt_af *xt;    // xt_init 里申请空间
+							// xt_register_target 往里注册规则和表
 
 static const char *const xt_prefix[NFPROTO_NUMPROTO] = {
 	[NFPROTO_UNSPEC] = "x",
@@ -1142,7 +1143,8 @@ static int xt_jumpstack_alloc(struct xt_table_info *i)
 
 	return 0;
 }
-
+// xt_register_table -> xt_replace_table
+// __do_replace -> xt_replace_table
 struct xt_table_info *
 xt_replace_table(struct xt_table *table,
 	      unsigned int num_counters,
@@ -1205,7 +1207,7 @@ xt_replace_table(struct xt_table *table,
 	return private;
 }
 EXPORT_SYMBOL_GPL(xt_replace_table);
-
+// ipt_register_table -> xt_register_table
 struct xt_table *xt_register_table(struct net *net,
 				   const struct xt_table *input_table,
 				   struct xt_table_info *bootstrap,
@@ -1542,6 +1544,7 @@ static const struct file_operations xt_target_ops = {
  * This function will create the nf_hook_ops that the x_table needs
  * to hand to xt_hook_link_net().
  */
+// iptable_filter_init -> xt_hook_ops_alloc
 struct nf_hook_ops *
 xt_hook_ops_alloc(const struct xt_table *table, nf_hookfn *fn)
 {

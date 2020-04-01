@@ -10,7 +10,7 @@ struct net_device;
 struct sk_buff;
 struct sock;
 struct net;
-
+// ipv4_dst_ops
 struct dst_ops {
 	unsigned short		family;
 	unsigned int		gc_thresh;
@@ -60,7 +60,8 @@ static inline void dst_entries_add(struct dst_ops *dst, int val)
 	percpu_counter_add(&dst->pcpuc_entries, val);
 	local_bh_enable();
 }
-
+// ip_rt_init -> dst_entries_init(&ipv4_dst_ops)
+// ip_rt_init -> dst_entries_init(&ipv4_dst_blackhole_ops)
 static inline int dst_entries_init(struct dst_ops *dst)
 {
 	return percpu_counter_init(&dst->pcpuc_entries, 0, GFP_KERNEL);

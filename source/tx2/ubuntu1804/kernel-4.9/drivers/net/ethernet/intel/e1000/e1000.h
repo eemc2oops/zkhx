@@ -162,9 +162,9 @@ struct e1000_tx_buffer {
 struct e1000_rx_buffer {
 	union {
 		struct page *page; /* jumbo: alloc_page */
-		u8 *data; /* else, netdev_alloc_frag */
+		u8 *data; /* else, netdev_alloc_frag */    // e1000_alloc_rx_buffers 里赋值
 	} rxbuf;
-	dma_addr_t dma;
+	dma_addr_t dma; // e1000_alloc_rx_buffers 里赋值
 };
 
 struct e1000_tx_ring {
@@ -188,9 +188,11 @@ struct e1000_tx_ring {
 	bool last_tx_tso;
 };
 
+// DMA 描述符
+// e1000_setup_rx_resources 里初始化
 struct e1000_rx_ring {
 	/* pointer to the descriptor ring memory */
-	void *desc;
+	void *desc;  // e1000_setup_rx_resources 里分配的 指向 DMA 描述符的内存  描述符格式 e1000_rx_desc
 	/* physical address of the descriptor ring */
 	dma_addr_t dma;
 	/* length of descriptor ring in bytes */
@@ -202,7 +204,7 @@ struct e1000_rx_ring {
 	/* next descriptor to check for DD status bit */
 	unsigned int next_to_clean;
 	/* array of buffer information structs */
-	struct e1000_rx_buffer *buffer_info;
+	struct e1000_rx_buffer *buffer_info;  // e1000_setup_rx_resources 里分配 指向 rx buf
 	struct sk_buff *rx_skb_top;
 
 	/* cpu for rx queue */
@@ -274,10 +276,12 @@ struct e1000_adapter {
 	/* RX */
 	bool (*clean_rx)(struct e1000_adapter *adapter,
 			 struct e1000_rx_ring *rx_ring,
-			 int *work_done, int work_to_do);
+			 int *work_done, int work_to_do);   // e1000_clean 里调用
+												// e1000_clean_rx_irq  
 	void (*alloc_rx_buf)(struct e1000_adapter *adapter,
 			     struct e1000_rx_ring *rx_ring,
-			     int cleaned_count);
+			     int cleaned_count);        //  e1000_configure 里调用
+			     							// e1000_alloc_rx_buffers
 	struct e1000_rx_ring *rx_ring;      /* One per active queue */
 	struct napi_struct napi;
 
@@ -322,10 +326,10 @@ struct e1000_adapter {
 
 	bool discarding;
 
-	struct work_struct reset_task;
+	struct work_struct reset_task;  // e1000_reset_task
 	struct delayed_work watchdog_task;
-	struct delayed_work fifo_stall_task;
-	struct delayed_work phy_info_task;
+	struct delayed_work fifo_stall_task;  // e1000_82547_tx_fifo_stall_task
+	struct delayed_work phy_info_task;   // e1000_update_phy_info_task
 };
 
 enum e1000_state_t {

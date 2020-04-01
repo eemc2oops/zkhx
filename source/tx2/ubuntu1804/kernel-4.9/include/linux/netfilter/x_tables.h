@@ -30,6 +30,7 @@
  *
  * @hotdrop:	drop packet if we had inspection problems
  */
+// ipt_do_table 里创建本结构，用来做匹配参数
 struct xt_action_param {
 	union {
 		const struct xt_match *match;
@@ -189,23 +190,25 @@ struct xt_target {
 };
 
 /* Furniture shopping... */
+// ipt_register_table 里注册 xt_table
+// ipv4   packet_filter
 struct xt_table {
-	struct list_head list;
+ 	struct list_head list;  // xt_register_table 把这个链挂到 netns_xt.tables[x] 里
 
 	/* What hooks you will enter on */
-	unsigned int valid_hooks;
+	unsigned int valid_hooks; // ipv4 : FILTER_VALID_HOOKS   掩码形式   NF_INET_LOCAL_IN 的掩码
 
 	/* Man behind the curtain... */
-	struct xt_table_info *private;
+	struct xt_table_info *private;  // xt_replace_table 里赋值
 
 	/* Set this to THIS_MODULE if you are a module, otherwise NULL */
 	struct module *me;
 
-	u_int8_t af;		/* address/protocol family */
-	int priority;		/* hook order */
+	u_int8_t af;		/* address/protocol family */  // ipv4 :  NFPROTO_IPV4
+	int priority;		/* hook order */  // ipv4 : NF_IP_PRI_FILTER
 
 	/* called when table is needed in the given netns */
-	int (*table_init)(struct net *net);
+	int (*table_init)(struct net *net);    // ipv4 : iptable_filter_table_init
 
 	/* A unique name... */
 	const char name[XT_TABLE_MAXNAMELEN];
@@ -214,6 +217,7 @@ struct xt_table {
 #include <linux/netfilter_ipv4.h>
 
 /* The table itself */
+// xt_table.private
 struct xt_table_info {
 	/* Size per table */
 	unsigned int size;
@@ -223,7 +227,9 @@ struct xt_table_info {
 	unsigned int initial_entries;
 
 	/* Entry points and underflows */
-	unsigned int hook_entry[NF_INET_NUMHOOKS];
+	unsigned int hook_entry[NF_INET_NUMHOOKS];  // hook_entry[x] 表示从entries起开始计算的偏移地址
+												// 该偏移地址用来标识　ipt_entry　结构，表示匹配规则
+												// ipt_do_table -> get_entry
 	unsigned int underflow[NF_INET_NUMHOOKS];
 
 	/*
@@ -233,7 +239,11 @@ struct xt_table_info {
 	unsigned int stacksize;
 	void ***jumpstack;
 
-	unsigned char entries[0] __aligned(8);
+	// unsigned char entries[0] __aligned(8);   // 源码定义是这一行
+	unsigned char entries[0];   // 源码定义是上一行                
+									// 匹配规则起始地址，用来表示每个 hook点的 匹配规则
+									// 保存的数据结构是 ipt_entry
+									// ipt_do_table -> get_entry
 };
 
 int xt_register_target(struct xt_target *target);

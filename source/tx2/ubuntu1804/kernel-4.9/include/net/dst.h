@@ -316,6 +316,7 @@ static inline void skb_dst_copy(struct sk_buff *nskb, const struct sk_buff *oskb
  *
  * If dst is not yet refcounted, let's do it
  */
+// __nf_queue -> skb_dst_force
 static inline void skb_dst_force(struct sk_buff *skb)
 {
 	if (skb_dst_is_noref(skb)) {

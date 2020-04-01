@@ -212,7 +212,7 @@ struct e1000_adapter {
 	struct timer_list blink_timer;
 
 	struct work_struct reset_task;
-	struct work_struct watchdog_task;
+	struct work_struct watchdog_task;  // e1000_watchdog
 
 	const struct e1000_info *ei;
 

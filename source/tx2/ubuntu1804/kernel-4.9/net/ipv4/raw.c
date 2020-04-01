@@ -93,6 +93,7 @@ static struct raw_hashinfo raw_v4_hashinfo = {
 	.lock = __RW_LOCK_UNLOCKED(raw_v4_hashinfo.lock),
 };
 
+// inet_create -> raw_hash_sk
 int raw_hash_sk(struct sock *sk)
 {
 	struct raw_hashinfo *h = sk->sk_prot->h.raw_hash;
@@ -776,7 +777,7 @@ out:
 		return err;
 	return copied;
 }
-
+// inet_create -> raw_init
 static int raw_init(struct sock *sk)
 {
 	struct raw_sock *rp = raw_sk(sk);
@@ -920,6 +921,7 @@ static int compat_raw_ioctl(struct sock *sk, unsigned int cmd, unsigned long arg
 }
 #endif
 
+// 挂在 proto_list 里  inet_init 里挂树
 struct proto raw_prot = {
 	.name		   = "RAW",
 	.owner		   = THIS_MODULE,

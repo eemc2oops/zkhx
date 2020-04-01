@@ -33,7 +33,7 @@ enum {
 #define IPPROTO_IGMP		IPPROTO_IGMP
   IPPROTO_IPIP = 4,		/* IPIP tunnels (older KA9Q tunnels use 94) */
 #define IPPROTO_IPIP		IPPROTO_IPIP
-  IPPROTO_TCP = 6,		/* Transmission Control Protocol	*/
+  IPPROTO_TCP = 6,		/* Transmission Control Protocol	*/  // inetsw_array
 #define IPPROTO_TCP		IPPROTO_TCP
   IPPROTO_EGP = 8,		/* Exterior Gateway Protocol		*/
 #define IPPROTO_EGP		IPPROTO_EGP

@@ -150,7 +150,12 @@ static inline int net_bind_service_capable(struct user_namespace *ns)
 /* The inetsw table contains everything that inet_create needs to
  * build a new socket.
  */
-static struct list_head inetsw[SOCK_MAX];
+// 挂inetsw队列流程 inet_init
+static struct list_head inetsw[SOCK_MAX];  // 每个数组里挂的信息可以参见以下定义
+										  // 数组下标是跟据 inet_protosw.type 区分的
+										  // 下标的取值是       SOCK_STREAM  SOCK_DGRAM 等
+										  // inetsw_array 
+										  // inet_create 创建socket的时候，以 type 参数为下标，找对应的类型
 static DEFINE_SPINLOCK(inetsw_lock);
 
 /* New destruction routine */
@@ -265,7 +270,7 @@ EXPORT_SYMBOL(inet_listen);
 /*
  *	Create an inet socket.
  */
-
+// __sock_create -> inet_create
 static int inet_create(struct net *net, struct socket *sock, int protocol,
 		       int kern)
 {
@@ -289,7 +294,7 @@ static int inet_create(struct net *net, struct socket *sock, int protocol,
 lookup_protocol:
 	err = -ESOCKTNOSUPPORT;
 	rcu_read_lock();
-	list_for_each_entry_rcu(answer, &inetsw[sock->type], list) {
+	list_for_each_entry_rcu(answer, &inetsw[sock->type], list) {  // 从 inetsw_array 里找 proto 信息
 
 		err = 0;
 		/* Check the non-wild match. */
@@ -370,9 +375,13 @@ lookup_protocol:
 
 	sock_init_data(sock, sk);
 
+	// 从 inetsw_array 里找 proto 信息
 	sk->sk_destruct	   = inet_sock_destruct;
 	sk->sk_protocol	   = protocol;
-	sk->sk_backlog_rcv = sk->sk_prot->backlog_rcv;
+	sk->sk_backlog_rcv = sk->sk_prot->backlog_rcv;  // tcp : tcp_v4_do_rcv 
+													// udp : __udp_queue_rcv_skb
+													// ping : ping_queue_rcv_skb
+													// raw : raw_rcv_skb
 
 	inet->uc_ttl	= -1;
 	inet->mc_loop	= 1;
@@ -392,7 +401,10 @@ lookup_protocol:
 		 */
 		inet->inet_sport = htons(inet->inet_num);
 		/* Add to protocol hash chains. */
-		err = sk->sk_prot->hash(sk);
+		err = sk->sk_prot->hash(sk);    // tcp : inet_hash
+										// udp : udp_lib_hash
+										// ping : ping_hash
+										// raw : raw_hash_sk
 		if (err) {
 			sk_common_release(sk);
 			goto out;
@@ -400,7 +412,10 @@ lookup_protocol:
 	}
 
 	if (sk->sk_prot->init) {
-		err = sk->sk_prot->init(sk);
+		err = sk->sk_prot->init(sk);  // tcp : tcp_v4_init_sock
+								      // udp : NULL
+								      // ping : ping_init_sock
+								      // raw : raw_init
 		if (err)
 			sk_common_release(sk);
 	}
@@ -1039,10 +1054,11 @@ static const struct net_proto_family inet_family_ops = {
 /* Upon startup we insert all the elements in inetsw_array[] into
  * the linked list inetsw.
  */
+// 挂 inetsw 队列流程 inet_init
 static struct inet_protosw inetsw_array[] =
 {
 	{
-		.type =       SOCK_STREAM,
+		.type =       SOCK_STREAM,   // 挂在 inetsw[SOCK_STREAM] 队列里
 		.protocol =   IPPROTO_TCP,
 		.prot =       &tcp_prot,
 		.ops =        &inet_stream_ops,
@@ -1051,7 +1067,7 @@ static struct inet_protosw inetsw_array[] =
 	},
 
 	{
-		.type =       SOCK_DGRAM,
+		.type =       SOCK_DGRAM,  // 挂在 inetsw[SOCK_DGRAM] 队列里
 		.protocol =   IPPROTO_UDP,
 		.prot =       &udp_prot,
 		.ops =        &inet_dgram_ops,
@@ -1059,7 +1075,7 @@ static struct inet_protosw inetsw_array[] =
        },
 
        {
-		.type =       SOCK_DGRAM,
+		.type =       SOCK_DGRAM,  // 挂在 inetsw[SOCK_DGRAM] 队列里 
 		.protocol =   IPPROTO_ICMP,
 		.prot =       &ping_prot,
 		.ops =        &inet_sockraw_ops,
@@ -1067,7 +1083,7 @@ static struct inet_protosw inetsw_array[] =
        },
 
        {
-	       .type =       SOCK_RAW,
+	       .type =       SOCK_RAW,   // 挂在 inetsw[SOCK_RAW] 队列里
 	       .protocol =   IPPROTO_IP,	/* wild card */
 	       .prot =       &raw_prot,
 	       .ops =        &inet_sockraw_ops,
@@ -1077,6 +1093,7 @@ static struct inet_protosw inetsw_array[] =
 
 #define INETSW_ARRAY_LEN ARRAY_SIZE(inetsw_array)
 
+// inet_init -> inet_register_protosw
 void inet_register_protosw(struct inet_protosw *p)
 {
 	struct list_head *lh;
@@ -1805,7 +1822,8 @@ static int __init ipv4_offload_init(void)
 
 fs_initcall(ipv4_offload_init);
 
-static struct packet_type ip_packet_type __read_mostly = {
+// static struct packet_type ip_packet_type __read_mostly = { //源码定义是这一行
+static struct packet_type ip_packet_type = {
 	.type = cpu_to_be16(ETH_P_IP),
 	.func = ip_rcv,
 };

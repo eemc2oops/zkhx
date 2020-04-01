@@ -30,7 +30,12 @@
 
 static DEFINE_MUTEX(afinfo_mutex);
 
-const struct nf_afinfo __rcu *nf_afinfo[NFPROTO_NUMPROTO] __read_mostly;
+// const struct nf_afinfo __rcu *nf_afinfo[NFPROTO_NUMPROTO] __read_mostly; // 源码定义
+const struct nf_afinfo *nf_afinfo[NFPROTO_NUMPROTO];  // nf_register_afinfo
+													  // nf_get_afinfo
+													  // nf_afinfo[AF_INET] = nf_ip_afinfo
+													  // nf_afinfo[AF_INET6] = nf_ip6_afinfo
+
 EXPORT_SYMBOL(nf_afinfo);
 const struct nf_ipv6_ops __rcu *nf_ipv6_ops __read_mostly;
 EXPORT_SYMBOL_GPL(nf_ipv6_ops);
@@ -38,6 +43,9 @@ EXPORT_SYMBOL_GPL(nf_ipv6_ops);
 DEFINE_PER_CPU(bool, nf_skb_duplicated);
 EXPORT_SYMBOL_GPL(nf_skb_duplicated);
 
+// 对应的取接口是 nf_get_afinfo
+// ipv4_netfilter_init -> nf_register_afinfo(&nf_ip_afinfo)
+// ipv6_netfilter_init -> nf_register_afinfo(&nf_ip6_afinfo)
 int nf_register_afinfo(const struct nf_afinfo *afinfo)
 {
 	mutex_lock(&afinfo_mutex);
@@ -65,6 +73,7 @@ static DEFINE_MUTEX(nf_hook_mutex);
 #define nf_entry_dereference(e) \
 	rcu_dereference_protected(e, lockdep_is_held(&nf_hook_mutex))
 
+// nf_register_net_hook -> nf_hook_entry_head
 static struct nf_hook_entry __rcu **nf_hook_entry_head(struct net *net, const struct nf_hook_ops *reg)
 {
 	if (reg->pf != NFPROTO_NETDEV)
@@ -78,7 +87,7 @@ static struct nf_hook_entry __rcu **nf_hook_entry_head(struct net *net, const st
 #endif
 	return NULL;
 }
-
+// _nf_register_hook -> nf_register_net_hook
 int nf_register_net_hook(struct net *net, const struct nf_hook_ops *reg)
 {
 	struct nf_hook_entry __rcu **pp;
@@ -108,7 +117,7 @@ int nf_register_net_hook(struct net *net, const struct nf_hook_ops *reg)
 
 	mutex_lock(&nf_hook_mutex);
 
-	/* Find the spot in the list */
+	/* Find the spot in the list */  // 根据优先级查找插入位置
 	while ((p = nf_entry_dereference(*pp)) != NULL) {
 		if (reg->priority < p->orig_ops->priority)
 			break;
@@ -165,7 +174,7 @@ void nf_unregister_net_hook(struct net *net, const struct nf_hook_ops *reg)
 	kfree(p);
 }
 EXPORT_SYMBOL(nf_unregister_net_hook);
-
+// ipt_register_table -> nf_register_net_hooks
 int nf_register_net_hooks(struct net *net, const struct nf_hook_ops *reg,
 			  unsigned int n)
 {
@@ -194,8 +203,12 @@ void nf_unregister_net_hooks(struct net *net, const struct nf_hook_ops *reg,
 }
 EXPORT_SYMBOL(nf_unregister_net_hooks);
 
-static LIST_HEAD(nf_hook_list);
+// static LIST_HEAD(nf_hook_list);  // 源码定义是这一行
+static struct list_head nf_hook_list = { &nf_hook_list, &nf_hook_list };
+											// nf_hook_ops.list 挂在这里
+												// _nf_register_hook 里注册 hook
 
+// nf_register_hook -> _nf_register_hook
 static int _nf_register_hook(struct nf_hook_ops *reg)
 {
 	struct net *net, *last;
@@ -218,7 +231,7 @@ rollback:
 	}
 	return ret;
 }
-
+// nf_register_hooks -> nf_register_hook
 int nf_register_hook(struct nf_hook_ops *reg)
 {
 	int ret;
@@ -301,7 +314,7 @@ void _nf_unregister_hooks(struct nf_hook_ops *reg, unsigned int n)
 		_nf_unregister_hook(&reg[n]);
 }
 EXPORT_SYMBOL(_nf_unregister_hooks);
-
+// nf_hook_slow -> nf_iterate
 unsigned int nf_iterate(struct sk_buff *skb,
 			struct nf_hook_state *state,
 			struct nf_hook_entry **entryp)
@@ -321,7 +334,8 @@ unsigned int nf_iterate(struct sk_buff *skb,
 		/* Optimization: we don't need to hold module
 		   reference here, since function can't sleep. --RR */
 repeat:
-		verdict = (*entryp)->ops.hook((*entryp)->ops.priv, skb, state);
+		verdict = (*entryp)->ops.hook((*entryp)->ops.priv, skb, state);  // ipv4 : iptable_filter_hook
+																		// ipv4分片 :   ipv4_conntrack_defrag
 		if (verdict != NF_ACCEPT) {
 #ifdef CONFIG_NETFILTER_DEBUG
 			if (unlikely((verdict & NF_VERDICT_MASK)
@@ -332,18 +346,19 @@ repeat:
 				continue;
 			}
 #endif
-			if (verdict != NF_REPEAT)
+			if (verdict != NF_REPEAT)  // 非 accept 直接返回
 				return verdict;
-			goto repeat;
+			goto repeat;  // hook 返回了 NF_REPEAT
 		}
-		*entryp = rcu_dereference((*entryp)->next);
+		*entryp = rcu_dereference((*entryp)->next); // 取下一条 hook 
 	}
-	return NF_ACCEPT;
+	return NF_ACCEPT;  // 所有的 hook 都返回 accept 才返回 accept
 }
 
 
 /* Returns 1 if okfn() needs to be executed by the caller,
  * -EPERM for NF_DROP, 0 otherwise.  Caller must hold rcu_read_lock. */
+// nf_hook_thresh -> nf_hook_slow
 int nf_hook_slow(struct sk_buff *skb, struct nf_hook_state *state)
 {
 	struct nf_hook_entry *entry;
@@ -356,11 +371,13 @@ next_hook:
 	if (verdict == NF_ACCEPT || verdict == NF_STOP) {
 		ret = 1;
 	} else if ((verdict & NF_VERDICT_MASK) == NF_DROP) {
+		// netfilter 要丢弃本包
 		kfree_skb(skb);
 		ret = NF_DROP_GETERR(verdict);
 		if (ret == 0)
 			ret = -EPERM;
 	} else if ((verdict & NF_VERDICT_MASK) == NF_QUEUE) {
+		// 数据包传递给用户空间的queue
 		ret = nf_queue(skb, state, &entry, verdict);
 		if (ret == 1 && entry)
 			goto next_hook;

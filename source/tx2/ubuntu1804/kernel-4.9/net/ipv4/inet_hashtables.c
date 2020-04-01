@@ -457,13 +457,13 @@ static int inet_reuseport_add_sock(struct sock *sk,
 
 	return reuseport_alloc(sk);
 }
-
+// inet_hash -> __inet_hash
 int __inet_hash(struct sock *sk, struct sock *osk,
 		 int (*saddr_same)(const struct sock *sk1,
 				   const struct sock *sk2,
 				   bool match_wildcard))
 {
-	struct inet_hashinfo *hashinfo = sk->sk_prot->h.hashinfo;
+	struct inet_hashinfo *hashinfo = sk->sk_prot->h.hashinfo;   // tcp : tcp_hashinfo
 	struct inet_listen_hashbucket *ilb;
 	int err = 0;
 
@@ -493,7 +493,7 @@ unlock:
 	return err;
 }
 EXPORT_SYMBOL(__inet_hash);
-
+// inet_create -> inet_hash
 int inet_hash(struct sock *sk)
 {
 	int err = 0;

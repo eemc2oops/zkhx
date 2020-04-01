@@ -8,12 +8,15 @@
 #include <linux/in6.h>
 
 /* Responses from hook functions. */
-#define NF_DROP 0
-#define NF_ACCEPT 1
-#define NF_STOLEN 2
-#define NF_QUEUE 3
-#define NF_REPEAT 4
-#define NF_STOP 5
+// 返回值判断流程参见           nf_hook_slow -> nf_iterate   
+#define NF_DROP 0  // 直接drop掉这个数据包
+#define NF_ACCEPT 1    // nf_iterate   数据包通过了挂载点的所有规则
+#define NF_STOLEN 2   // 表示数据包保存到netfilter里，暂时不转到后续流程。  ip包分片包的处理会采用这种方式 ipv4_conntrack_defrag
+#define NF_QUEUE 3   // 将数据包enque到用户空间的enque handler
+#define NF_REPEAT 4  // 为netfilter的一个内部判定结果，需要重复该条规则的判定，直至不为NF_REPEAT
+#define NF_STOP 5    // 数据包通过了挂载点的所有规则。
+					// 但与NF_ACCEPT不同的一点时，当某条规则的判定结果为NF_STOP，那么可以直接返回结果NF_STOP，
+					// 无需进行后面的判定了。而NF_ACCEPT需要所以的规则都为ACCEPT，才能返回NF_ACCEPT
 #define NF_MAX_VERDICT NF_STOP
 
 /* we overload the higher bits for encoding auxiliary data such as the queue
@@ -42,7 +45,8 @@
 /* NF_VERDICT_BITS should be 8 now, but userspace might break if this changes */
 #define NF_VERDICT_BITS 16
 #endif
-
+// xt_table.valid_hooks    表示位表操作
+// nf_hook_ops.hooknum
 enum nf_inet_hooks {
 	NF_INET_PRE_ROUTING,
 	NF_INET_LOCAL_IN,
@@ -56,7 +60,8 @@ enum nf_dev_hooks {
 	NF_NETDEV_INGRESS,
 	NF_NETDEV_NUMHOOKS
 };
-
+// xt_table.af
+// nf_hook_ops.pf
 enum {
 	NFPROTO_UNSPEC =  0,
 	NFPROTO_INET   =  1,

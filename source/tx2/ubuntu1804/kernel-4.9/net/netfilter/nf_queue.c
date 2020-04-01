@@ -29,6 +29,7 @@
 
 /* return EBUSY when somebody else is registered, return EEXIST if the
  * same handler is registered, return 0 in case of success. */
+// nfnl_queue_net_init -> nf_register_queue_handler(net, &nfqh)
 void nf_register_queue_handler(struct net *net, const struct nf_queue_handler *qh)
 {
 	/* should never happen, we only have one queueing backend in kernel */
@@ -71,6 +72,7 @@ void nf_queue_entry_release_refs(struct nf_queue_entry *entry)
 EXPORT_SYMBOL_GPL(nf_queue_entry_release_refs);
 
 /* Bump dev refs so they don't vanish while packet is out */
+// __nf_queue -> nf_queue_entry_get_refs
 void nf_queue_entry_get_refs(struct nf_queue_entry *entry)
 {
 	struct nf_hook_state *state = &entry->state;
@@ -106,7 +108,7 @@ void nf_queue_nf_hook_drop(struct net *net, const struct nf_hook_entry *entry)
 		qh->nf_hook_drop(net, entry);
 	rcu_read_unlock();
 }
-
+// nf_queue -> __nf_queue
 static int __nf_queue(struct sk_buff *skb, const struct nf_hook_state *state,
 		      unsigned int queuenum)
 {
@@ -123,7 +125,7 @@ static int __nf_queue(struct sk_buff *skb, const struct nf_hook_state *state,
 		goto err;
 	}
 
-	afinfo = nf_get_afinfo(state->pf);
+	afinfo = nf_get_afinfo(state->pf);  // 以太网 : pf 值是 NFPROTO_IPV4 : 2    取出的    afinfo = nf_ip_afinfo
 	if (!afinfo)
 		goto err;
 
@@ -141,8 +143,8 @@ static int __nf_queue(struct sk_buff *skb, const struct nf_hook_state *state,
 
 	nf_queue_entry_get_refs(entry);
 	skb_dst_force(skb);
-	afinfo->saveroute(skb, entry);
-	status = qh->outfn(entry, queuenum);
+	afinfo->saveroute(skb, entry); // ipv4 : nf_ip_saveroute
+	status = qh->outfn(entry, queuenum); // nfqnl_enqueue_packet
 
 	if (status < 0) {
 		nf_queue_entry_release_refs(entry);
@@ -157,13 +159,15 @@ err:
 }
 
 /* Packets leaving via this function must come back through nf_reinject(). */
+// nf_hook_slow -> nf_queue
 int nf_queue(struct sk_buff *skb, struct nf_hook_state *state,
 	     struct nf_hook_entry **entryp, unsigned int verdict)
 {
 	struct nf_hook_entry *entry = *entryp;
 	int ret;
 
-	RCU_INIT_POINTER(state->hook_entries, entry);
+	RCU_INIT_POINTER(state->hook_entries, entry);  //  entryp 是　netns_nf.hooks[NFPROTO_NUMPROTO][NF_MAX_HOOKS]　里的一条记录
+													// entryp 是在　nf_hook_slow　里顺着　netns_nf.hooks[NFPROTO_NUMPROTO][NF_MAX_HOOKS]　链表里查找的某一个记录
 	ret = __nf_queue(skb, state, verdict >> NF_VERDICT_QBITS);
 	if (ret < 0) {
 		if (ret == -ESRCH &&

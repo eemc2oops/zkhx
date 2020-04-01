@@ -78,8 +78,14 @@
 #include <linux/capability.h>
 #include <linux/user_namespace.h>
 
-struct kmem_cache *skbuff_head_cache __read_mostly;
-static struct kmem_cache *skbuff_fclone_cache __read_mostly;
+// struct kmem_cache *skbuff_head_cache __read_mostly;  // 源码定义在这一行，走读方便改成下一行。
+struct kmem_cache *skbuff_head_cache; // skb_init 里初始化
+										// __alloc_skb 从这里申请内存
+
+// static struct kmem_cache *skbuff_fclone_cache __read_mostly; // 源码定义在这一行，走读方便改成下一行。
+struct kmem_cache *skbuff_fclone_cache; // skb_init 里初始化
+											// __alloc_skb 从这里申请内存
+
 int sysctl_max_skb_frags __read_mostly = MAX_SKB_FRAGS;
 EXPORT_SYMBOL(sysctl_max_skb_frags);
 
@@ -209,8 +215,7 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
 	u8 *data;
 	bool pfmemalloc;
 
-	cache = (flags & SKB_ALLOC_FCLONE)
-		? skbuff_fclone_cache : skbuff_head_cache;
+	cache = (flags & SKB_ALLOC_FCLONE) ? skbuff_fclone_cache : skbuff_head_cache;
 
 	if (sk_memalloc_socks() && (flags & SKB_ALLOC_RX))
 		gfp_mask |= __GFP_MEMALLOC;
@@ -1618,6 +1623,7 @@ EXPORT_SYMBOL(pskb_trim_rcsum_slow);
  *
  * It is pretty complicated. Luckily, it is called only in exceptional cases.
  */
+// pskb_may_pull -> __pskb_pull_tail
 unsigned char *__pskb_pull_tail(struct sk_buff *skb, int delta)
 {
 	/* If skb has not enough free space at tail, get new one
@@ -3486,6 +3492,7 @@ done:
 }
 EXPORT_SYMBOL_GPL(skb_gro_receive);
 
+// sock_init -> skb_init
 void __init skb_init(void)
 {
 	skbuff_head_cache = kmem_cache_create("skbuff_head_cache",

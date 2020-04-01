@@ -91,7 +91,7 @@ struct ip_rt_info {
 	u_int8_t tos;
 	u_int32_t mark;
 };
-
+// __nf_queue -> nf_ip_saveroute
 static void nf_ip_saveroute(const struct sk_buff *skb,
 			    struct nf_queue_entry *entry)
 {

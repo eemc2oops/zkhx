@@ -704,7 +704,7 @@ static void free_entry(struct nf_queue_entry *entry)
 	nf_queue_entry_release_refs(entry);
 	kfree(entry);
 }
-
+// nfqnl_enqueue_packet -> __nfqnl_enqueue_packet_gso
 static int
 __nfqnl_enqueue_packet_gso(struct net *net, struct nfqnl_instance *queue,
 			   struct sk_buff *skb, struct nf_queue_entry *entry)
@@ -734,7 +734,8 @@ __nfqnl_enqueue_packet_gso(struct net *net, struct nfqnl_instance *queue,
 	}
 	return ret;
 }
-
+			   
+// __nf_queue -> nfqnl_enqueue_packet
 static int
 nfqnl_enqueue_packet(struct nf_queue_entry *entry, unsigned int queuenum)
 {

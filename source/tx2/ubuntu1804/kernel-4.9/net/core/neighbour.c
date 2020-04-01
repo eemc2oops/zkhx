@@ -1506,8 +1506,11 @@ static void neigh_parms_destroy(struct neigh_parms *parms)
 
 static struct lock_class_key neigh_table_proxy_queue_class;
 
-static struct neigh_table *neigh_tables[NEIGH_NR_TABLES] __read_mostly;
+// static struct neigh_table *neigh_tables[NEIGH_NR_TABLES] __read_mostly; // 源码定义在这一行
+static struct neigh_table *neigh_tables[NEIGH_NR_TABLES];  //  neigh_table_init 里向数组里添加数据
+															// neigh_tables[NEIGH_ARP_TABLE] = arp_tbl
 
+// arp_init -> neigh_table_init(NEIGH_ARP_TABLE, &arp_tbl)
 void neigh_table_init(int index, struct neigh_table *tbl)
 {
 	unsigned long now = jiffies;

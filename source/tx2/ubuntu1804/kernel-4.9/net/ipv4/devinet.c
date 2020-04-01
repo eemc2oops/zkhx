@@ -2416,6 +2416,7 @@ static struct rtnl_af_ops inet_af_ops __read_mostly = {
 	.set_link_af	  = inet_set_link_af,
 };
 
+// ip_rt_init -> devinet_init
 void __init devinet_init(void)
 {
 	int i;

@@ -1254,13 +1254,15 @@ void arp_ifdown(struct net_device *dev)
  *	Called once on startup.
  */
 
-static struct packet_type arp_packet_type __read_mostly = {
+//static struct packet_type arp_packet_type __read_mostly = { // 源码定义是这一行
+static struct packet_type arp_packet_type  = {
+
 	.type =	cpu_to_be16(ETH_P_ARP),
 	.func =	arp_rcv,
 };
 
 static int arp_proc_init(void);
-
+// inet_init -> arp_init
 void __init arp_init(void)
 {
 	neigh_table_init(NEIGH_ARP_TABLE, &arp_tbl);

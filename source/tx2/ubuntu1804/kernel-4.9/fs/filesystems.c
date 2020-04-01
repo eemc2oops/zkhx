@@ -29,7 +29,9 @@
  *	Once the reference is obtained we can drop the spinlock.
  */
 
-static struct file_system_type *file_systems;
+static struct file_system_type *file_systems;  // 记录所有支持的文件系统
+											  // register_filesystem 时，往这个队列里添加支持的文件系统
+											  // sock_fs_type
 static DEFINE_RWLOCK(file_systems_lock);
 
 /* WARNING: This can be used only if we _already_ own a reference */
@@ -43,6 +45,7 @@ void put_filesystem(struct file_system_type *fs)
 	module_put(fs->owner);
 }
 
+// register_filesystem -> find_filesystem
 static struct file_system_type **find_filesystem(const char *name, unsigned len)
 {
 	struct file_system_type **p;
@@ -65,7 +68,8 @@ static struct file_system_type **find_filesystem(const char *name, unsigned len)
  *	structures and must not be freed until the file system has been
  *	unregistered.
  */
- 
+
+// sock_init -> register_filesystem(&sock_fs_type)
 int register_filesystem(struct file_system_type * fs)
 {
 	int res = 0;

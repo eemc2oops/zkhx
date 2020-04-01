@@ -25,7 +25,7 @@ static inline __sum16 csum_fold(__wsum csum)
 	return ~(__force __sum16)(sum >> 16);
 }
 #define csum_fold csum_fold
-
+// ip_rcv -> ip_fast_csum
 static inline __sum16 ip_fast_csum(const void *iph, unsigned int ihl)
 {
 	union {

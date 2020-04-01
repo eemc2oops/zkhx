@@ -314,7 +314,9 @@ struct napi_struct {
 	unsigned long		state;
 	int			weight;
 	unsigned int		gro_count;
-	int			(*poll)(struct napi_struct *, int);
+	int			(*poll)(struct napi_struct *, int); // napi_poll 里被调用，在软中断里，处理具体的收包流程  
+													// softnet_data.back.log.poll = process_backlog   net_dev_init 里赋值
+													// e1000网卡驱动 e1000_clean
 #ifdef CONFIG_NETPOLL
 	spinlock_t		poll_lock;
 	int			poll_owner;
@@ -1702,8 +1704,8 @@ struct net_device {
 	const struct iw_handler_def *wireless_handlers;
 	struct iw_public_data	*wireless_data;
 #endif
-	const struct net_device_ops *netdev_ops;
-	const struct ethtool_ops *ethtool_ops;
+	const struct net_device_ops *netdev_ops;  // e1000 : e1000_netdev_ops
+	const struct ethtool_ops *ethtool_ops;  // e1000 : e1000_ethtool_ops
 #ifdef CONFIG_NET_SWITCHDEV
 	const struct switchdev_ops *switchdev_ops;
 #endif
@@ -1862,7 +1864,8 @@ struct net_device {
 	struct netpoll_info __rcu	*npinfo;
 #endif
 
-	possible_net_t			nd_net;
+	possible_net_t			nd_net; // 设置 dev_net_set
+									// 获取 dev_net
 
 	/* mid-layer private */
 	union {
@@ -2222,16 +2225,17 @@ static inline struct sk_buff **call_gro_receive_sk(gro_receive_sk_t cb,
 }
 
 struct packet_type {
-	__be16			type;	/* This is really htons(ether_type). */
+	__be16			type;	/* This is really htons(ether_type). */   // 用法见  list字段     // ETH_P_ARP
 	struct net_device	*dev;	/* NULL is wildcarded here	     */
 	int			(*func) (struct sk_buff *,
 					 struct net_device *,
 					 struct packet_type *,
-					 struct net_device *);
+					 struct net_device *);  // deliver_skb 里调用
+											// ip包 : ip_rcv
 	bool			(*id_match)(struct packet_type *ptype,
 					    struct sock *sk);
 	void			*af_packet_priv;
-	struct list_head	list;
+	struct list_head	list;  // 添加到 ptype_base[type] 列表 或者 添加到  ptype_all 列表  参见 dev_add_pack
 };
 
 struct offload_callbacks {
@@ -2831,6 +2835,10 @@ extern int netdev_flow_limit_table_len;
 /*
  * Incoming packets are placed on per-CPU queues
  */
+// net_dev_init 里初始化本cpu变量
+// softnet_data 是cpu变量，网卡中断里判断处于收包状态，则把本网卡的信息到到这里，在软中断里从这里取出网卡信息，处理收包
+// __napi_schedule 里往本队列里添加待处理的设备，网卡驱动的中断里调用。
+// net_rx_action 软中断里处理各网卡的具体收包流程
 struct softnet_data {
 	struct list_head	poll_list;
 	struct sk_buff_head	process_queue;
@@ -2863,7 +2871,7 @@ struct softnet_data {
 #endif
 	unsigned int		dropped;
 	struct sk_buff_head	input_pkt_queue;
-	struct napi_struct	backlog;
+	struct napi_struct	backlog;  // backlog.poll = process_backlog    net_dev_init 里赋值
 
 };
 

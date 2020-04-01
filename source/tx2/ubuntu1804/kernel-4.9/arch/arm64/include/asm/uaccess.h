@@ -421,6 +421,7 @@ do {									\
 
 #define put_user	__put_user
 
+// ∂®“Â‘⁄     arch/arm64/lib/copy_from_user.S  
 extern unsigned long __must_check __arch_copy_from_user(void *to, const void __user *from, unsigned long n);
 extern unsigned long __must_check __arch_copy_to_user(void __user *to, const void *from, unsigned long n);
 extern unsigned long __must_check __arch_copy_in_user(void __user *to, const void __user *from, unsigned long n);

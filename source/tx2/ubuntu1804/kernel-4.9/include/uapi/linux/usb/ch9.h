@@ -280,22 +280,36 @@ struct usb_descriptor_header {
 /*-------------------------------------------------------------------------*/
 
 /* USB_DT_DEVICE: Device descriptor */
+// usb设备描述符，协议规范，与设备交互用
 struct usb_device_descriptor {
-	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bLength;    // 此描述表的字节数
+	__u8  bDescriptorType; // 描述符的类型（此处应为0x01，即设备描述符）
 
-	__le16 bcdUSB;
-	__u8  bDeviceClass;
-	__u8  bDeviceSubClass;
-	__u8  bDeviceProtocol;
-	__u8  bMaxPacketSize0;
-	__le16 idVendor;
-	__le16 idProduct;
-	__le16 bcdDevice;
-	__u8  iManufacturer;
-	__u8  iProduct;
-	__u8  iSerialNumber;
-	__u8  bNumConfigurations;
+	__le16 bcdUSB;  // 此设备与描述表兼容的USB设备说明版本号
+	__u8  bDeviceClass; /*设备类码：
+						如果此域的值为0则一个设置下每个接口指出它自己的类，各个接口各自独立工作。 
+						如果此域的值处于1~FEH之间，则设备在不同的接口上支持不同的类。并这些接口可能不能独立工作。
+						此值指出了这些接口集体的类定义。 
+						如果此域设为FFH，则此设备的类由厂商定义*/
+	__u8  bDeviceSubClass;  /*子类掩码 
+							这些码值的具体含义根据bDeviceClass 域来看。 
+							如bDeviceClass 域为零，此域也须为零 
+							如bDeviceClass 域为FFH，此域的所有值保留。*/
+	__u8  bDeviceProtocol; /*协议码?
+							这些码的值视bDeviceClass 和 bDeviceSubClass 的值而定。?
+							如果设备支持设备类相关的协议，此码标志了设备类的值。
+							如果此域的值为零，则此设备不支持设备类相关的协议，
+							然而，可能它的接口支持设备类相关的协议。
+							如果此域的值为FFH，此设备使用厂商定义的协议。
+							*/
+	__u8  bMaxPacketSize0;  // 端点0的最大包大小（仅8,16,32,64为合法值）
+	__le16 idVendor;  // 厂商标志（由USB-IF组织赋值）
+	__le16 idProduct; // 产品标志（由厂商赋值）
+	__le16 bcdDevice; // 设备发行号（BCD 码）
+	__u8  iManufacturer; // 描述厂商信息的字符串描述符的索引值。
+	__u8  iProduct; // 描述产品信息的字串描述符的索引值。
+	__u8  iSerialNumber;  // 描述设备序列号信息的字串描述符的索引值。
+	__u8  bNumConfigurations;  // 可能的配置描述符数目
 } __attribute__ ((packed));
 
 #define USB_DT_DEVICE_SIZE		18
@@ -336,16 +350,23 @@ struct usb_device_descriptor {
  * devices with a USB_DT_DEVICE_QUALIFIER have any OTHER_SPEED_CONFIG
  * descriptors.
  */
+// usb设备的配置描述符
 struct usb_config_descriptor {
-	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bLength;  // 此描述表的字节数长度
+	__u8  bDescriptorType;  // 配置描述表类型（此处为0x02）
 
-	__le16 wTotalLength;
-	__u8  bNumInterfaces;
-	__u8  bConfigurationValue;
-	__u8  iConfiguration;
-	__u8  bmAttributes;
-	__u8  bMaxPower;
+	__le16 wTotalLength;  // 此配置信息的总长（包括配置，接口，端点和设备类及厂商定义的描述符）
+	__u8  bNumInterfaces;  // 此配置所支持的接口个数
+	__u8  bConfigurationValue; // 在SetConfiguration（）请求中用作参数来选定此配置
+	__u8  iConfiguration; // 描述此配置的字串描述表索引
+	__u8  bmAttributes; /*配置特性：?
+						D7： 保留（设为一）?
+						D6： 自给电源?
+						D5： 远程唤醒?
+						D4..0：保留（设为一）?
+						一个既用总线电源又有自给电源的设备会在MaxPower域指出需要从总线取的电量。
+						并设置D6为一。运行时期的实际电源模式可由GetStatus(DEVICE) 请求得到。*/
+	__u8  bMaxPower;  // 在此配置下的总线电源耗费量。以 2mA 为一个单位
 } __attribute__ ((packed));
 
 #define USB_DT_CONFIG_SIZE		9
@@ -359,11 +380,13 @@ struct usb_config_descriptor {
 /*-------------------------------------------------------------------------*/
 
 /* USB_DT_STRING: String descriptor */
+// 字符串描述符
 struct usb_string_descriptor {
-	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bLength; // 此描述表的字节数，这个长度-2就是字符串的长度，字符个数是字符串长度除以2
+	__u8  bDescriptorType; // 字串描述表类型（此处应为0x03）
 
-	__le16 wData[1];		/* UTF-16LE encoded */
+	__le16 wData[1];		/* UTF-16LE encoded */  // UTF-16 字符串，不带0结尾，
+													// 每个字符占2个字节
 } __attribute__ ((packed));
 
 /* note that "string" zero is special, it holds language codes that
@@ -373,17 +396,25 @@ struct usb_string_descriptor {
 /*-------------------------------------------------------------------------*/
 
 /* USB_DT_INTERFACE: Interface descriptor */
+// 
 struct usb_interface_descriptor {
-	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bLength;  // 此表的字节数
+	__u8  bDescriptorType;  // 接口描述表类（此处应为0x04）
 
-	__u8  bInterfaceNumber;
-	__u8  bAlternateSetting;
-	__u8  bNumEndpoints;
-	__u8  bInterfaceClass;
-	__u8  bInterfaceSubClass;
-	__u8  bInterfaceProtocol;
-	__u8  iInterface;
+	__u8  bInterfaceNumber; // 接口号，当前配置支持的接口数组索引（从零开始）。
+	__u8  bAlternateSetting; // 可选设置的索引值
+	__u8  bNumEndpoints; // 此接口用的端点数量，如果是零则说明此接口只用缺省控制管道。
+	__u8  bInterfaceClass;  /*接口所属的类值： 
+								零值为将来的标准保留。 
+								如果此域的值设为FFH，则此接口类由厂商说明。 
+								所有其它的值由USB 说明保留。*/
+	__u8  bInterfaceSubClass; /*子类码 
+								这些值的定义视bInterfaceClass域而定。 
+								如果bInterfaceClass域的值为零则此域的值必须为零。 
+								bInterfaceClass域不为FFH则所有值由USB 所保留。*/
+	__u8  bInterfaceProtocol; /*协议码：bInterfaceClass 和bInterfaceSubClass 域的值而定.
+							如果一个接口支持设备类相关的请求此域的值指出了设备类说明中所定义的协议.*/
+	__u8  iInterface;   // 描述此接口的字串描述表的索引值。
 } __attribute__ ((packed));
 
 #define USB_DT_INTERFACE_SIZE		9
@@ -392,13 +423,31 @@ struct usb_interface_descriptor {
 
 /* USB_DT_ENDPOINT: Endpoint descriptor */
 struct usb_endpoint_descriptor {
-	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bLength;  // 此描述表的字节数长度
+	__u8  bDescriptorType;  // 端点描述表类（此处应为0x05）
 
-	__u8  bEndpointAddress;
-	__u8  bmAttributes;
-	__le16 wMaxPacketSize;
-	__u8  bInterval;
+	__u8  bEndpointAddress;  /*此描述表所描述的端点的地址、方向： 
+							Bit 3..0 : 端点号.
+							Bit 6..4 : 保留,为零 
+							Bit 7:    方向,如果控制端点则略。 
+							0：输出端点（主机到设备） 
+							1：输入端点（设备到主机）*/
+	__u8  bmAttributes;  /*此域的值描述的是在bConfigurationValue域所指的配置下端点的特性。 
+						Bit 1..0 :传送类型 
+							00=控制传送 
+							01=同步传送 
+							10=批传送 
+							11=中断传送 
+						所有其它的位都保留。*/
+	__le16 wMaxPacketSize; /*当前配置下此端点能够接收或发送的最大数据包的大小。 
+							对于实进传输，此值用于为每帧的数据净负荷预留时间。
+							在实际运行时，管道可能不完全需要预留的带宽，
+							实际带宽可由设备通过一种非USB定义的机制汇报给主机。
+							对于中断传输，批量传输和控制传输，端点可能发送比之短的数据包*/
+	__u8  bInterval;  /*周期数据传输端点的时间间隙。 
+						此域的值对于批传送的端点及控制传送的端点无意义。
+						对于同步传送的端点此域必需为1，表示周期为1ms。
+						对于中断传送的端点此域值的范围为1ms到255ms。*/
 
 	/* NOTE:  these two are _only_ in audio endpoints. */
 	/* use USB_DT_ENDPOINT*_SIZE in bLength, not sizeof. */
@@ -827,25 +876,30 @@ struct usb_encryption_descriptor {
 /*-------------------------------------------------------------------------*/
 
 /* USB_DT_BOS:  group of device-level capabilities */
+// 二进制设备对象描述符
 struct usb_bos_descriptor {
-	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bLength;  // size of descriptor
+	__u8  bDescriptorType; // BOS descriptor type
 
-	__le16 wTotalLength;
-	__u8  bNumDeviceCaps;
+	__le16 wTotalLength;  // length of this descriptor and all of its sub descriptor
+	__u8  bNumDeviceCaps; // the number of separate device capability descriptors in the BOS
 } __attribute__((packed));
 
 #define USB_DT_BOS_SIZE		5
 /*-------------------------------------------------------------------------*/
 
 /* USB_DT_DEVICE_CAPABILITY:  grouped with BOS */
+// 设备能力描述符
 struct usb_dev_cap_header {
-	__u8  bLength;
-	__u8  bDescriptorType;
-	__u8  bDevCapabilityType;
+	__u8  bLength; // size of descriptor
+	__u8  bDescriptorType; // descriptor type : DEVICE CAPABILITY TYPE 
+	__u8  bDevCapabilityType;  // 目前支持三种 无线USB (1)、USB2.0 (2) 扩展和USB3.0 (3)
+								// USB_CAP_TYPE_WIRELESS_USB
+								// USB_CAP_TYPE_EXT
+								// USB_SS_CAP_TYPE
 } __attribute__((packed));
 
-#define	USB_CAP_TYPE_WIRELESS_USB	1
+#define	USB_CAP_TYPE_WIRELESS_USB	1   // usb_dev_cap_header.bDevCapabilityType
 
 struct usb_wireless_cap_descriptor {	/* Ultra Wide Band */
 	__u8  bLength;
@@ -876,7 +930,7 @@ struct usb_wireless_cap_descriptor {	/* Ultra Wide Band */
 #define USB_DT_USB_WIRELESS_CAP_SIZE	11
 
 /* USB 2.0 Extension descriptor */
-#define	USB_CAP_TYPE_EXT		2
+#define	USB_CAP_TYPE_EXT		2  // usb_dev_cap_header.bDevCapabilityType
 
 struct usb_ext_cap_descriptor {		/* Link Power Management */
 	__u8  bLength;
@@ -897,7 +951,7 @@ struct usb_ext_cap_descriptor {		/* Link Power Management */
  * SuperSpeed USB Capability descriptor: Defines the set of SuperSpeed USB
  * specific device level capabilities
  */
-#define		USB_SS_CAP_TYPE		3
+#define		USB_SS_CAP_TYPE		3  // usb_dev_cap_header.bDevCapabilityType
 struct usb_ss_cap_descriptor {		/* Link Power Management */
 	__u8  bLength;
 	__u8  bDescriptorType;

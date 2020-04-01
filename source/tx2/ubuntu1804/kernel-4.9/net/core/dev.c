@@ -152,9 +152,21 @@
 
 static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
-struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
-struct list_head ptype_all __read_mostly;	/* Taps */
-static struct list_head offload_base __read_mostly;
+
+// struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly; // 源码定义是这一行。走读代码方便修改，
+struct list_head ptype_base[PTYPE_HASH_SIZE];    // net_dev_init 里初始化
+												 // packet_type 结构的 挂到本列表数组里,参见 dev_add_pack
+												// arp_init 里添加     
+												// ptype_base[ETH_P_ARP] = { arp_packet_type, }
+												// ptype_base[ETH_P_IP] = { ip_packet_type, }
+												// ptype_base[ETH_P_IPV6] = { ipv6_packet_type, }
+												
+// struct list_head ptype_all __read_mostly;	/* Taps */  // 源码定义是这一行。走读代码方便修改，
+struct list_head ptype_all;   // net_dev_init 里初始化
+
+// static struct list_head offload_base __read_mostly; // 源码定义是这一行。走读代码方便修改，
+static struct list_head offload_base;  // net_dev_init 里初始化
+
 
 static int netif_rx_internal(struct sk_buff *skb);
 static int call_netdevice_notifiers_info(unsigned long val,
@@ -374,6 +386,7 @@ static inline void netdev_set_addr_lockdep_class(struct net_device *dev)
  *							--ANK (980803)
  */
 
+// dev_add_pack -> ptype_head
 static inline struct list_head *ptype_head(const struct packet_type *pt)
 {
 	if (pt->type == htons(ETH_P_ALL))
@@ -396,6 +409,9 @@ static inline struct list_head *ptype_head(const struct packet_type *pt)
  *	will see the new packet type (until the next received packet).
  */
 
+// arp_init -> dev_add_pack(&arp_packet_type)
+// inet_init -> dev_add_pack(&ip_packet_type)
+// ipv6_packet_init -> dev_add_pack(&ipv6_packet_type)
 void dev_add_pack(struct packet_type *pt)
 {
 	struct list_head *head = ptype_head(pt);
@@ -1534,6 +1550,8 @@ static int dev_boot_phase = 1;
  *	view of the network device list.
  */
 
+// arp_init -> register_netdevice_notifier
+// rtnetlink_init -> register_netdevice_notifier(&rtnetlink_dev_notifier)
 int register_netdevice_notifier(struct notifier_block *nb)
 {
 	struct net_device *dev;
@@ -1847,6 +1865,7 @@ int dev_forward_skb(struct net_device *dev, struct sk_buff *skb)
 }
 EXPORT_SYMBOL_GPL(dev_forward_skb);
 
+// deliver_ptype_list_skb -> deliver_skb
 static inline int deliver_skb(struct sk_buff *skb,
 			      struct packet_type *pt_prev,
 			      struct net_device *orig_dev)
@@ -1854,9 +1873,9 @@ static inline int deliver_skb(struct sk_buff *skb,
 	if (unlikely(skb_orphan_frags(skb, GFP_ATOMIC)))
 		return -ENOMEM;
 	atomic_inc(&skb->users);
-	return pt_prev->func(skb, skb->dev, pt_prev, orig_dev);
+	return pt_prev->func(skb, skb->dev, pt_prev, orig_dev); // ip包 : ip_rcv
 }
-
+// __netif_receive_skb_core -> deliver_ptype_list_skb
 static inline void deliver_ptype_list_skb(struct sk_buff *skb,
 					  struct packet_type **pt,
 					  struct net_device *orig_dev,
@@ -3923,6 +3942,7 @@ int netif_rx_ni(struct sk_buff *skb)
 }
 EXPORT_SYMBOL(netif_rx_ni);
 
+// net_dev_init 里注册 到软中断 NET_TX_SOFTIRQ
 static __latent_entropy void net_tx_action(struct softirq_action *h)
 {
 	struct softnet_data *sd = this_cpu_ptr(&softnet_data);
@@ -4148,7 +4168,7 @@ static inline int nf_ingress(struct sk_buff *skb, struct packet_type **pt_prev,
 #endif /* CONFIG_NETFILTER_INGRESS */
 	return 0;
 }
-
+// __netif_receive_skb -> __netif_receive_skb_core
 static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
 {
 	struct packet_type *ptype, *pt_prev;
@@ -4303,7 +4323,7 @@ drop:
 out:
 	return ret;
 }
-
+// netif_receive_skb_internal -> __netif_receive_skb
 static int __netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
@@ -4328,7 +4348,7 @@ static int __netif_receive_skb(struct sk_buff *skb)
 
 	return ret;
 }
-
+// napi_skb_finish -> netif_receive_skb_internal
 static int netif_receive_skb_internal(struct sk_buff *skb)
 {
 	int ret;
@@ -4380,7 +4400,10 @@ int netif_receive_skb(struct sk_buff *skb)
 }
 EXPORT_SYMBOL(netif_receive_skb);
 
-DEFINE_PER_CPU(struct work_struct, flush_works);
+// DEFINE_PER_CPU(struct work_struct, flush_works);  // 源码定义是这一行,方便阅读修改.
+struct work_struct flush_works; // 源码定义是上一行,方便阅读修改
+								// net_dev_init 里初始化
+
 
 /* Network device is going away, flush any packets still pending */
 static void flush_backlog(struct work_struct *work)
@@ -4705,7 +4728,7 @@ static void napi_skb_free_stolen_head(struct sk_buff *skb)
 	skb_dst_drop(skb);
 	kmem_cache_free(skbuff_head_cache, skb);
 }
-
+// napi_gro_receive -> napi_skb_finish
 static gro_result_t napi_skb_finish(gro_result_t ret, struct sk_buff *skb)
 {
 	switch (ret) {
@@ -4732,7 +4755,7 @@ static gro_result_t napi_skb_finish(gro_result_t ret, struct sk_buff *skb)
 
 	return ret;
 }
-
+// e1000_receive_skb -> napi_gro_receive
 gro_result_t napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 {
 	skb_mark_napi_id(skb, napi);
@@ -5231,6 +5254,7 @@ void netif_napi_del(struct napi_struct *napi)
 }
 EXPORT_SYMBOL(netif_napi_del);
 
+// net_rx_action -> napi_poll
 static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 {
 	void *have;
@@ -5250,7 +5274,7 @@ static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 	 */
 	work = 0;
 	if (test_bit(NAPI_STATE_SCHED, &n->state)) {
-		work = n->poll(n, weight);
+		work = n->poll(n, weight);  // e1000 : e1000_clean
 		trace_napi_poll(n, work, weight);
 	}
 
@@ -5293,6 +5317,7 @@ out_unlock:
 	return work;
 }
 
+// net_dev_init 里注册 到软中断 NET_RX_SOFTIRQ
 static __latent_entropy void net_rx_action(struct softirq_action *h)
 {
 	struct softnet_data *sd = this_cpu_ptr(&softnet_data);
@@ -7229,7 +7254,7 @@ EXPORT_SYMBOL(netif_tx_stop_all_queues);
  *	The locking appears insufficient to guarantee two parallel registers
  *	will not get the same name.
  */
-
+// register_netdev -> register_netdevice
 int register_netdevice(struct net_device *dev)
 {
 	int ret;
@@ -7424,6 +7449,7 @@ EXPORT_SYMBOL_GPL(init_dummy_netdev);
  *	and expands the device name if you passed a format string to
  *	alloc_netdev.
  */
+// e1000_probe -> register_netdev
 int register_netdev(struct net_device *dev)
 {
 	int err;
@@ -8266,6 +8292,7 @@ static void __net_exit netdev_exit(struct net *net)
 	kfree(net->dev_index_head);
 }
 
+// net_dev_init 里注册
 static struct pernet_operations __net_initdata netdev_net_ops = {
 	.init = netdev_init,
 	.exit = netdev_exit,
@@ -8366,6 +8393,7 @@ static void __net_exit default_device_exit_batch(struct list_head *net_list)
 	rtnl_unlock();
 }
 
+// net_dev_init 里挂到 pernet_list
 static struct pernet_operations __net_initdata default_device_ops = {
 	.exit = default_device_exit,
 	.exit_batch = default_device_exit_batch,

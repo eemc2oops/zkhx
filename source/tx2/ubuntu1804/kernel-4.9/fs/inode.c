@@ -890,6 +890,7 @@ EXPORT_SYMBOL(get_next_ino);
  *	- fs can't be unmount
  *	- quotas, fsnotify, writeback can't work
  */
+// sock_alloc -> new_inode_pseudo
 struct inode *new_inode_pseudo(struct super_block *sb)
 {
 	struct inode *inode = alloc_inode(sb);

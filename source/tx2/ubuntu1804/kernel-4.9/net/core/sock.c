@@ -142,7 +142,11 @@
 #include <net/busy_poll.h>
 
 static DEFINE_MUTEX(proto_list_mutex);
-static LIST_HEAD(proto_list);
+// static LIST_HEAD(proto_list);  // 源码是这一行，方便阅读，改成下一行
+struct list_head proto_list = { &proto_list, &proto_list };   // proto.node 挂在这个队列里
+												// proto_register 里往这个队列里挂支持的套接字类型
+									// net模块支持的套接字 tcp_prot          udp_prot  raw_prot   ping_prot
+
 
 /**
  * sk_ns_capable - General socket capability test
@@ -1386,6 +1390,7 @@ static void sk_prot_free(struct proto *prot, struct sock *sk)
  *	@prot: struct proto associated with this new sock instance
  *	@kern: is this to be a kernel socket?
  */
+// inet_create -> sk_alloc
 struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
 		      struct proto *prot, int kern)
 {
@@ -1393,7 +1398,7 @@ struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
 
 	sk = sk_prot_alloc(prot, priority | __GFP_ZERO, family);
 	if (sk) {
-		sk->sk_family = family;
+		sk->sk_family = family;  // 网络包 PF_INET
 		/*
 		 * See comment in struct sock definition to understand
 		 * why we need sk_prot_creator -acme
@@ -2426,7 +2431,7 @@ void sk_stop_timer(struct sock *sk, struct timer_list* timer)
 		__sock_put(sk);
 }
 EXPORT_SYMBOL(sk_stop_timer);
-
+// inet_create -> sock_init_data
 void sock_init_data(struct socket *sock, struct sock *sk)
 {
 	skb_queue_head_init(&sk->sk_receive_queue);
@@ -2893,6 +2898,7 @@ static int req_prot_init(const struct proto *prot)
 	return 0;
 }
 
+// inet_init -> proto_register
 int proto_register(struct proto *prot, int alloc_slab)
 {
 	if (alloc_slab) {

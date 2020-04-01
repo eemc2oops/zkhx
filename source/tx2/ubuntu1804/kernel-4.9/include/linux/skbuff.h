@@ -717,7 +717,8 @@ struct sk_buff {
 #define PKT_TYPE_OFFSET()	offsetof(struct sk_buff, __pkt_type_offset)
 
 	__u8			__pkt_type_offset[0];
-	__u8			pkt_type:3;
+	__u8			pkt_type:3;   // eth_type_trans 里赋值
+								// 判断以太网mac层包类型，广播，多播，其它主机的包 等等 PACKET_OTHERHOST
 	__u8			ignore_df:1;
 	__u8			nfctinfo:3;
 	__u8			nf_trace:1;
@@ -792,7 +793,8 @@ struct sk_buff {
 	__u16			inner_network_header;
 	__u16			inner_mac_header;
 
-	__be16			protocol;
+	__be16			protocol;   // 网卡驱动里赋值
+								// e1000 : e1000_receive_skb
 	__u16			transport_header;
 	__u16			network_header;
 	__u16			mac_header;
@@ -802,6 +804,7 @@ struct sk_buff {
 	/* public: */
 
 	/* These elements must be at the end, see alloc_skb() for details.  */
+	// __alloc_skb 里对这几个指针有描述
 	sk_buff_data_t		tail;
 	sk_buff_data_t		end;
 	unsigned char		*head,
@@ -840,6 +843,7 @@ static inline bool skb_pfmemalloc(const struct sk_buff *skb)
  *
  * Returns skb dst_entry, regardless of reference taken or not.
  */
+// skb_dst_force -> skb_dst
 static inline struct dst_entry *skb_dst(const struct sk_buff *skb)
 {
 	/* If refdst was not refcounted, check we still are in a 
@@ -1961,7 +1965,7 @@ static inline unsigned char *pskb_pull(struct sk_buff *skb, unsigned int len)
 {
 	return unlikely(len > skb->len) ? NULL : __pskb_pull(skb, len);
 }
-
+// ip_rcv -> pskb_may_pull
 static inline int pskb_may_pull(struct sk_buff *skb, unsigned int len)
 {
 	if (likely(len <= skb_headlen(skb)))

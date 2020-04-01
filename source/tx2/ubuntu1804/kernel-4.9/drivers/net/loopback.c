@@ -217,6 +217,7 @@ out:
 }
 
 /* Registered in net/core/dev.c */
+// net_dev_init Àï¹Òµ½ pernet_list
 struct pernet_operations __net_initdata loopback_net_ops = {
        .init = loopback_net_init,
 };

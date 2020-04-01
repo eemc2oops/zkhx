@@ -17,6 +17,8 @@
 
 #include "pcie-designware.h"
 
+// tx2 编译了这个文件
+
 /* PCIe Port Logic registers */
 #define PLR_OFFSET			0x700
 #define PCIE_PHY_DEBUG_R1		(PLR_OFFSET + 0x2c)

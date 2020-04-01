@@ -972,7 +972,7 @@ static struct mount *skip_mnt_tree(struct mount *p)
 	}
 	return p;
 }
-
+// kern_mount_data -> vfs_kern_mount
 struct vfsmount *
 vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void *data)
 {
@@ -3321,6 +3321,7 @@ void put_mnt_ns(struct mnt_namespace *ns)
 	free_mnt_ns(ns);
 }
 
+// sock_init -> kern_mount -> kern_mount_data(&sock_fs_type, NULL)
 struct vfsmount *kern_mount_data(struct file_system_type *type, void *data)
 {
 	struct vfsmount *mnt;

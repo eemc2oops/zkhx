@@ -53,7 +53,8 @@
 #define NF_IP_POST_ROUTING	4
 #define NF_IP_NUMHOOKS		5
 #endif /* ! __KERNEL__ */
-
+// xt_table.priority
+// nf_hook_ops.priority
 enum nf_ip_hook_priorities {
 	NF_IP_PRI_FIRST = INT_MIN,
 	NF_IP_PRI_CONNTRACK_DEFRAG = -400,

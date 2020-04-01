@@ -46,41 +46,58 @@ struct sk_buff;
 struct nf_hook_ops;
 
 struct sock;
-
+// nf_hook_state_init 里进行初始化赋值
+// netfilter  hook 时，临时生成保存调用参数的结构
+// nf_queue_entry.state   调用 queue 流程的数据结构 __nf_queue
 struct nf_hook_state {
-	unsigned int hook;
-	int thresh;
-	u_int8_t pf;
+	unsigned int hook;  // 以太网 : NF_INET_PRE_ROUTING   表示数据包的处理步骤
+	int thresh;  // INT_MIN
+	u_int8_t pf;   // 以太网 :     NFPROTO_IPV4    表示协议
 	struct net_device *in;
 	struct net_device *out;
 	struct sock *sk;
 	struct net *net;
-	struct nf_hook_entry __rcu *hook_entries;
-	int (*okfn)(struct net *, struct sock *, struct sk_buff *);
+	struct nf_hook_entry __rcu *hook_entries;  // 指向　netns_nf.hooks[NFPROTO_NUMPROTO][NF_MAX_HOOKS]　中的某一条。
+											// hook_entries　的值在 filter 流程里，会随时变化，但是变化的值，一定是
+										   // netns_nf.hooks[NFPROTO_NUMPROTO][NF_MAX_HOOKS] 中的某一条
+										   // 赋值流程 nf_queue
+	int (*okfn)(struct net *, struct sock *, struct sk_buff *);  //  ip包收包流程  ip_rcv_finish  对应 NF_INET_PRE_ROUTING 链
 };
 
 typedef unsigned int nf_hookfn(void *priv,
 			       struct sk_buff *skb,
 			       const struct nf_hook_state *state);
+// nf_hook_entry.ops
+// xt_hook_ops_alloc 里创建本结构
+// netfilter 的 hook 信息 所有的 hook 都挂在 nf_hook_list 里
+// 同时，nf_hook_ops也会以nf_hook_entry.ops 的形式，挂在 netns_nf.hooks 里面
+// ipv4 iptable_filter_init　里注册
 struct nf_hook_ops {
-	struct list_head	list;
+	struct list_head	list;  // 挂在 nf_hook_list 里    _nf_register_hook 函数负责挂
 
 	/* User fills in from here down. */
-	nf_hookfn		*hook;
+	nf_hookfn		*hook;   // 在 nf_iterate 里调用
+						     // ipv4 : iptable_filter_hook
+						     // ipv4 分片 : ipv4_conntrack_defrag   ( NF_INET_PRE_ROUTING )
+						     // ipv4 分片 : ipv4_conntrack_defrag ( NF_INET_LOCAL_OUT   )
 	struct net_device	*dev;
 	void			*priv;
-	u_int8_t		pf;
-	unsigned int		hooknum;
+	u_int8_t		pf;  // ipv4 : NFPROTO_IPV4
+	unsigned int		hooknum;  // ipv4 : NF_INET_LOCAL_IN   NF_INET_FORWARD   NF_INET_LOCAL_OUT
+								// ipv4 分片 : NF_INET_PRE_ROUTING      NF_INET_LOCAL_OUT
 	/* Hooks are ordered in ascending priority. */
-	int			priority;
+	int			priority;  // ipv4  : NF_IP_PRI_FILTER
+	                       // ipv4 分片 : NF_IP_PRI_CONNTRACK_DEFRAG
+							// 注册时，使用本优先级比较插入位置                 nf_register_net_hook
 };
-
+// netns_nf.hooks
 struct nf_hook_entry {
-	struct nf_hook_entry __rcu	*next;
+	struct nf_hook_entry __rcu	*next;   // 指向下一个 nf_hook_entry ，
+										// nf_register_net_hook 注册时通过 nf_hook_ops.priority 判断插入位置
 	struct nf_hook_ops		ops;
 	const struct nf_hook_ops	*orig_ops;
 };
-
+// nf_hook_thresh -> nf_hook_state_init
 static inline void nf_hook_state_init(struct nf_hook_state *p,
 				      struct nf_hook_entry *hook_entry,
 				      unsigned int hook,
@@ -161,6 +178,7 @@ int nf_hook_slow(struct sk_buff *skb, struct nf_hook_state *state);
  *	okfn must be invoked by the caller in this case.  Any other return
  *	value indicates the packet has been consumed by the hook.
  */
+// NF_HOOK_THRESH -> nf_hook_thresh(NFPROTO_IPV4, NF_INET_PRE_ROUTING,net, NULL, skb, dev, NULL, ip_rcv_finish, INT_MIN)
 static inline int nf_hook_thresh(u_int8_t pf, unsigned int hook,
 				 struct net *net,
 				 struct sock *sk,
@@ -171,7 +189,7 @@ static inline int nf_hook_thresh(u_int8_t pf, unsigned int hook,
 				 int thresh)
 {
 	struct nf_hook_entry *hook_head;
-	int ret = 1;
+	int ret = 1;  // return 1 表示在函数退出时调用 okfn
 
 #ifdef HAVE_JUMP_LABEL
 	if (__builtin_constant_p(pf) &&
@@ -219,7 +237,7 @@ static inline int nf_hook(u_int8_t pf, unsigned int hook, struct net *net,
    Just document it clearly, then you can expect some sense from kernel
    coders :)
 */
-
+// NF_HOOK -> NF_HOOK_THRESH(NFPROTO_IPV4, NF_INET_PRE_ROUTING,net, NULL, skb, dev, NULL, ip_rcv_finish, INT_MIN)
 static inline int
 NF_HOOK_THRESH(uint8_t pf, unsigned int hook, struct net *net, struct sock *sk,
 	       struct sk_buff *skb, struct net_device *in,
@@ -247,6 +265,7 @@ NF_HOOK_COND(uint8_t pf, unsigned int hook, struct net *net, struct sock *sk,
 	return ret;
 }
 
+// ip_rcv -> NF_HOOK(NFPROTO_IPV4, NF_INET_PRE_ROUTING,net, NULL, skb, dev, NULL, ip_rcv_finish)
 static inline int
 NF_HOOK(uint8_t pf, unsigned int hook, struct net *net, struct sock *sk, struct sk_buff *skb,
 	struct net_device *in, struct net_device *out,
@@ -275,25 +294,30 @@ int skb_make_writable(struct sk_buff *skb, unsigned int writable_len);
 struct flowi;
 struct nf_queue_entry;
 
+// ipv4_netfilter_init 里注册 nf_ip_afinfo
+// 所有的本结构都  通过         nf_register_afinfo  注册在 nf_afinfo[NFPROTO_NUMPROTO] 里
 struct nf_afinfo {
-	unsigned short	family;
+	unsigned short	family;  // ipv4 : AF_INET
 	__sum16		(*checksum)(struct sk_buff *skb, unsigned int hook,
-				    unsigned int dataoff, u_int8_t protocol);
+				    unsigned int dataoff, u_int8_t protocol);  // ipv4 : nf_ip_checksum
 	__sum16		(*checksum_partial)(struct sk_buff *skb,
 					    unsigned int hook,
 					    unsigned int dataoff,
 					    unsigned int len,
-					    u_int8_t protocol);
+					    u_int8_t protocol);  // ipv4 : nf_ip_checksum_partial
 	int		(*route)(struct net *net, struct dst_entry **dst,
-				 struct flowi *fl, bool strict);
+				 struct flowi *fl, bool strict); // ipv4 : nf_ip_route
 	void		(*saveroute)(const struct sk_buff *skb,
-				     struct nf_queue_entry *entry);
+				     struct nf_queue_entry *entry); // __nf_queue 里调用
+				     								// ipv4 : nf_ip_saveroute
 	int		(*reroute)(struct net *net, struct sk_buff *skb,
-				   const struct nf_queue_entry *entry);
-	int		route_key_size;
+				   const struct nf_queue_entry *entry); // ipv4 : nf_ip_reroute
+	int		route_key_size;  // ipv4 : sizeof(struct ip_rt_info)
 };
 
-extern const struct nf_afinfo __rcu *nf_afinfo[NFPROTO_NUMPROTO];
+// extern const struct nf_afinfo __rcu *nf_afinfo[NFPROTO_NUMPROTO]; // 源码定义这一行
+// nf_register_afinfo 是对应的注册函数
+// __nf_queue -> nf_get_afinfo
 static inline const struct nf_afinfo *nf_get_afinfo(unsigned short family)
 {
 	return rcu_dereference(nf_afinfo[family]);

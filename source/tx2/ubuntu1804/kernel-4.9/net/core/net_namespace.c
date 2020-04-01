@@ -25,7 +25,11 @@
  *	Our network namespace constructor/destructor lists
  */
 
-static LIST_HEAD(pernet_list);
+// static LIST_HEAD(pernet_list); // 源码定义是这一行.为方便走读,改成下一行.
+struct list_head pernet_list = LIST_HEAD_INIT(pernet_list); //  register_pernet_device 往这个队列里挂操作接口
+         								// net_dev_init 里挂的 loopback_net_ops     default_device_ops
+															
+
 static struct list_head *first_device = &pernet_list;
 DEFINE_MUTEX(net_mutex);
 
@@ -935,6 +939,8 @@ static void unregister_pernet_operations(struct pernet_operations *ops)
  *	are called in the reverse of the order with which they were
  *	registered.
  */
+// net_dev_init -> register_pernet_subsys(&netdev_net_ops)
+// rtnetlink_init -> register_pernet_subsys(&rtnetlink_net_ops)
 int register_pernet_subsys(struct pernet_operations *ops)
 {
 	int error;
@@ -981,6 +987,8 @@ EXPORT_SYMBOL_GPL(unregister_pernet_subsys);
  *	are called in the reverse of the order with which they were
  *	registered.
  */
+// net_dev_init -> register_pernet_device(&loopback_net_ops)
+// net_dev_init -> register_pernet_device(&default_device_ops)
 int register_pernet_device(struct pernet_operations *ops)
 {
 	int error;

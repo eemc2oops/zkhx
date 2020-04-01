@@ -387,6 +387,7 @@ static void e1000_release_manageability(struct e1000_adapter *adapter)
  * e1000_configure - configure the hardware for RX and TX
  * @adapter = private board structure
  **/
+// e1000_open -> e1000_configure
 static void e1000_configure(struct e1000_adapter *adapter)
 {
 	struct net_device *netdev = adapter->netdev;
@@ -407,7 +408,7 @@ static void e1000_configure(struct e1000_adapter *adapter)
 	for (i = 0; i < adapter->num_rx_queues; i++) {
 		struct e1000_rx_ring *ring = &adapter->rx_ring[i];
 		adapter->alloc_rx_buf(adapter, ring,
-				      E1000_DESC_UNUSED(ring));
+				      E1000_DESC_UNUSED(ring)); // e1000_alloc_rx_buffers
 	}
 }
 
@@ -880,6 +881,7 @@ static const struct net_device_ops e1000_netdev_ops = {
  * OS network device settings (MTU size).
  * Returns negative error codes if MAC type setup fails.
  */
+// e1000_probe -> e1000_init_hw_struct
 static int e1000_init_hw_struct(struct e1000_adapter *adapter,
 				struct e1000_hw *hw)
 {
@@ -1315,6 +1317,7 @@ static void e1000_remove(struct pci_dev *pdev)
  * e1000_sw_init initializes the Adapter private data structure.
  * e1000_init_hw_struct MUST be called before this function
  **/
+// e1000_probe -> e1000_sw_init
 static int e1000_sw_init(struct e1000_adapter *adapter)
 {
 	adapter->rx_buffer_len = MAXIMUM_ETHERNET_VLAN_SIZE;
@@ -1344,6 +1347,7 @@ static int e1000_sw_init(struct e1000_adapter *adapter)
  * We allocate one ring per queue at run-time since we don't know the
  * number of queues at compile-time.
  **/
+// e1000_sw_init -> e1000_alloc_queues
 static int e1000_alloc_queues(struct e1000_adapter *adapter)
 {
 	adapter->tx_ring = kcalloc(adapter->num_tx_queues,
@@ -1702,6 +1706,7 @@ static void e1000_configure_tx(struct e1000_adapter *adapter)
  *
  * Returns 0 on success, negative on failure
  **/
+// e1000_setup_all_rx_resources -> e1000_setup_rx_resources
 static int e1000_setup_rx_resources(struct e1000_adapter *adapter,
 				    struct e1000_rx_ring *rxdr)
 {
@@ -1775,6 +1780,7 @@ setup_rx_desc_die:
  *
  * Return 0 on success, negative on failure
  **/
+// e1000_open -> e1000_setup_all_rx_resources
 int e1000_setup_all_rx_resources(struct e1000_adapter *adapter)
 {
 	int i, err = 0;
@@ -1866,6 +1872,7 @@ static void e1000_setup_rctl(struct e1000_adapter *adapter)
  *
  * Configure the Rx unit of the MAC after a reset.
  **/
+// e1000_configure -> e1000_configure_rx
 static void e1000_configure_rx(struct e1000_adapter *adapter)
 {
 	u64 rdba;
@@ -3838,6 +3845,7 @@ static irqreturn_t e1000_intr(int irq, void *data)
  * e1000_clean - NAPI Rx polling callback
  * @adapter: board private structure
  **/
+// napi_poll -> e1000_clean
 static int e1000_clean(struct napi_struct *napi, int budget)
 {
 	struct e1000_adapter *adapter = container_of(napi, struct e1000_adapter,
@@ -3846,7 +3854,7 @@ static int e1000_clean(struct napi_struct *napi, int budget)
 
 	tx_clean_complete = e1000_clean_tx_irq(adapter, &adapter->tx_ring[0]);
 
-	adapter->clean_rx(adapter, &adapter->rx_ring[0], &work_done, budget);
+	adapter->clean_rx(adapter, &adapter->rx_ring[0], &work_done, budget);  // e1000_clean_rx_irq
 
 	if (!tx_clean_complete)
 		work_done = budget;
@@ -4144,7 +4152,7 @@ static bool e1000_tbi_should_accept(struct e1000_adapter *adapter,
 
 	return false;
 }
-
+// e1000_copybreak -> e1000_alloc_rx_skb
 static struct sk_buff *e1000_alloc_rx_skb(struct e1000_adapter *adapter,
 					  unsigned int bufsz)
 {
@@ -4359,6 +4367,7 @@ next_desc:
 /* this should improve performance for small packets with large amounts
  * of reassembly being done in the stack
  */
+// e1000_clean_rx_irq -> e1000_copybreak
 static struct sk_buff *e1000_copybreak(struct e1000_adapter *adapter,
 				       struct e1000_rx_buffer *buffer_info,
 				       u32 length, const void *data)
@@ -4387,6 +4396,7 @@ static struct sk_buff *e1000_copybreak(struct e1000_adapter *adapter,
  * @work_done: amount of napi work completed this call
  * @work_to_do: max amount of work allowed for this call to do
  */
+// e1000_clean -> e1000_clean_rx_irq
 static bool e1000_clean_rx_irq(struct e1000_adapter *adapter,
 			       struct e1000_rx_ring *rx_ring,
 			       int *work_done, int work_to_do)
@@ -4598,6 +4608,7 @@ e1000_alloc_jumbo_rx_buffers(struct e1000_adapter *adapter,
  * e1000_alloc_rx_buffers - Replace used receive buffers; legacy & extended
  * @adapter: address of board private structure
  **/
+// e1000_configure -> e1000_alloc_rx_buffers
 static void e1000_alloc_rx_buffers(struct e1000_adapter *adapter,
 				   struct e1000_rx_ring *rx_ring,
 				   int cleaned_count)

@@ -2235,6 +2235,7 @@ int udp_abort(struct sock *sk, int err)
 }
 EXPORT_SYMBOL_GPL(udp_abort);
 
+// 挂在 proto_list 里  inet_init 里挂树
 struct proto udp_prot = {
 	.name		   = "UDP",
 	.owner		   = THIS_MODULE,

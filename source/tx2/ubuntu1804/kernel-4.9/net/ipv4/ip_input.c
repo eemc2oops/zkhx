@@ -342,7 +342,7 @@ static int ip_rcv_finish(struct net *net, struct sock *sk, struct sk_buff *skb)
 	 */
 	if (!skb_valid_dst(skb)) {
 		int err = ip_route_input_noref(skb, iph->daddr, iph->saddr,
-					       iph->tos, dev);
+					       iph->tos, dev); // 处理路由信息
 		if (unlikely(err)) {
 			if (err == -EXDEV)
 				__NET_INC_STATS(net, LINUX_MIB_IPRPFILTER);
@@ -403,6 +403,7 @@ drop:
 /*
  * 	Main IP Receive routine.
  */
+// deliver_skb -> ip_rcv
 int ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, struct net_device *orig_dev)
 {
 	const struct iphdr *iph;

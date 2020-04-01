@@ -67,6 +67,9 @@
 #endif
 
 /* Yes, Virginia, you have to zero the padding. */
+// ipt_entry.ip
+// ip_packet_match 里使用
+// netfilter 里 ip 包的匹配条件
 struct ipt_ip {
 	/* Source and destination IP addr */
 	struct in_addr src, dst;
@@ -102,6 +105,9 @@ struct ipt_ip {
 /* This structure defines each of the firewall rules.  Consists of 3
    parts which are 1) general IP header stuff 2) match specific
    stuff 3) the target to perform if the rule matches */
+// 保存匹配规则
+// ipt_do_table
+// xt_table_info.entries
 struct ipt_entry {
 	struct ipt_ip ip;
 
@@ -111,7 +117,9 @@ struct ipt_entry {
 	/* Size of ipt_entry + matches */
 	__u16 target_offset;
 	/* Size of ipt_entry + matches + target */
-	__u16 next_offset;
+	__u16 next_offset;  // ipt_entry 按顺序保存在内存里，每条 ipt_entry 长度不一样。
+	                    // 本字段表示下一条 ipt_entry 的相对偏移
+	                    // ipt_next_entry
 
 	/* Back pointer */
 	unsigned int comefrom;
@@ -175,6 +183,7 @@ struct ipt_getinfo {
 };
 
 /* The argument to IPT_SO_SET_REPLACE. */
+// ipt_alloc_initial_table 里生成本结构 
 struct ipt_replace {
 	/* Which table. */
 	char name[XT_TABLE_MAXNAMELEN];

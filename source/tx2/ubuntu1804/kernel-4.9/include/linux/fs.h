@@ -632,7 +632,7 @@ struct inode {
 	struct posix_acl	*i_default_acl;
 #endif
 
-	const struct inode_operations	*i_op;
+	const struct inode_operations	*i_op;  // sock_alloc  : sockfs_inode_ops
 	struct super_block	*i_sb;
 	struct address_space	*i_mapping;
 
@@ -1818,8 +1818,8 @@ extern int vfs_dedupe_file_range(struct file *file,
 				 struct file_dedupe_range *same);
 
 struct super_operations {
-   	struct inode *(*alloc_inode)(struct super_block *sb);
-	void (*destroy_inode)(struct inode *);
+   	struct inode *(*alloc_inode)(struct super_block *sb);  // sockfs_ops : sock_alloc_inode
+	void (*destroy_inode)(struct inode *);  // sockfs_ops : sock_destroy_inode
 
    	void (*dirty_inode) (struct inode *, int flags);
 	int (*write_inode) (struct inode *, struct writeback_control *wbc);
@@ -1831,7 +1831,7 @@ struct super_operations {
 	int (*freeze_fs) (struct super_block *);
 	int (*thaw_super) (struct super_block *);
 	int (*unfreeze_fs) (struct super_block *);
-	int (*statfs) (struct dentry *, struct kstatfs *);
+	int (*statfs) (struct dentry *, struct kstatfs *); // sockfs_ops : simple_statfs
 	int (*remount_fs) (struct super_block *, int *, char *);
 	int (*remount_fs2) (struct vfsmount *, struct super_block *, int *, char *);
 	void *(*clone_mnt_data) (void *);
@@ -2160,6 +2160,7 @@ mount_pseudo(struct file_system_type *fs_type, char *name,
 extern int register_filesystem(struct file_system_type *);
 extern int unregister_filesystem(struct file_system_type *);
 extern struct vfsmount *kern_mount_data(struct file_system_type *, void *data);
+// sock_init -> kern_mount
 #define kern_mount(type) kern_mount_data(type, NULL)
 extern void kern_unmount(struct vfsmount *mnt);
 extern int may_umount_tree(struct vfsmount *);

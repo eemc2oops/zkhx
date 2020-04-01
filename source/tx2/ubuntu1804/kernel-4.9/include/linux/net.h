@@ -61,8 +61,12 @@ struct net;
  * grep ARCH_HAS_SOCKET_TYPE include/asm-* /socket.h, at least MIPS
  * overrides this enum for binary compat reasons.
  */
+
+// 以下是 sys_socket 接口的 type 参数
+// inetsw_array 里有对这些值的引用
+// 同时也是 inetsw 数组的下标
 enum sock_type {
-	SOCK_STREAM	= 1,
+	SOCK_STREAM	= 1,   
 	SOCK_DGRAM	= 2,
 	SOCK_RAW	= 3,
 	SOCK_RDM	= 4,
@@ -109,10 +113,11 @@ struct socket_wq {
  *  @wq: wait queue for several uses
  */
 struct socket {
-	socket_state		state;
+	socket_state		state;  // inet_create 里赋 SS_UNCONNECTED
 
 	kmemcheck_bitfield_begin(type);
-	short			type;
+	short			type;   // 取值   SOCK_PACKET
+							// __sock_create 里赋值
 	kmemcheck_bitfield_end(type);
 
 	unsigned long		flags;
@@ -121,7 +126,7 @@ struct socket {
 
 	struct file		*file;
 	struct sock		*sk;
-	const struct proto_ops	*ops;
+	const struct proto_ops	*ops;  // inet_create 里赋值, inetsw_array 里的ops值做为参考
 };
 
 struct vm_area_struct;
@@ -198,7 +203,7 @@ struct proto_ops {
 	type dst = ({ __sockaddr_check_size(sizeof(*dst)); (type) src; })
 
 struct net_proto_family {
-	int		family;
+	int		family;  //用来挂在 net_families     数组里    // PF_INET
 	int		(*create)(struct net *net, struct socket *sock,
 				  int protocol, int kern);
 	struct module	*owner;

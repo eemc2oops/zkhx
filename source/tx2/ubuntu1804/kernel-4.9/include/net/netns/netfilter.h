@@ -7,15 +7,19 @@ struct proc_dir_entry;
 struct nf_logger;
 struct nf_queue_handler;
 
-struct netns_nf {
+// net.nf
+struct netns_nf {   // nf_hook_entry_head 的用法
 #if defined CONFIG_PROC_FS
 	struct proc_dir_entry *proc_netfilter;
 #endif
-	const struct nf_queue_handler __rcu *queue_handler;
+	const struct nf_queue_handler __rcu *queue_handler; // nfnl_queue_net_init 里注册 nfqh
 	const struct nf_logger __rcu *nf_loggers[NFPROTO_NUMPROTO];
 #ifdef CONFIG_SYSCTL
 	struct ctl_table_header *nf_log_dir_header;
 #endif
-	struct nf_hook_entry __rcu *hooks[NFPROTO_NUMPROTO][NF_MAX_HOOKS];
+	struct nf_hook_entry __rcu *hooks[NFPROTO_NUMPROTO][NF_MAX_HOOKS];  // 一维为协议族   NFPROTO_IPV4 
+																		// 二维为HOOK链
+																	   // nf_register_net_hook 里负责向这里插入 hook
+																	   // HOOK 调用时 nf_hook_thresh 里从 hooks 里找到对应的 hook_entry
 };
 #endif

@@ -12,7 +12,7 @@
  *	struct type##_error term;
  * } *tbl;
  */
-
+// ipt_alloc_initial_table -> xt_alloc_initial_table
 #define xt_alloc_initial_table(type, typ2) ({ \
 	unsigned int hook_mask = info->valid_hooks; \
 	unsigned int nhooks = hweight32(hook_mask); \

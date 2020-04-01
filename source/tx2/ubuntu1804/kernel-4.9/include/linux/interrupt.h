@@ -438,8 +438,8 @@ enum
 {
 	HI_SOFTIRQ=0,
 	TIMER_SOFTIRQ,
-	NET_TX_SOFTIRQ,
-	NET_RX_SOFTIRQ,
+	NET_TX_SOFTIRQ,  // net_dev_init 里注册 net_tx_action
+	NET_RX_SOFTIRQ,  // net_dev_init 里注册 net_rx_action
 	BLOCK_SOFTIRQ,
 	IRQ_POLL_SOFTIRQ,
 	TASKLET_SOFTIRQ,

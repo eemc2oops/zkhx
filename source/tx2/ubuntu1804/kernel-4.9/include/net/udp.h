@@ -189,6 +189,7 @@ static inline struct udphdr *udp_gro_udphdr(struct sk_buff *skb)
 }
 
 /* hash routines shared between UDPv4/6 and UDP-Litev4/6 */
+// inet_create -> udp_lib_hash
 static inline int udp_lib_hash(struct sock *sk)
 {
 	BUG();

@@ -161,7 +161,11 @@ static const struct file_operations socket_file_ops = {
  */
 
 static DEFINE_SPINLOCK(net_family_lock);
-static const struct net_proto_family __rcu *net_families[NPROTO] __read_mostly;
+// static const struct net_proto_family __rcu *net_families[NPROTO] __read_mostly;  // 源码是这一行。
+static const struct net_proto_family  *net_families[NPROTO];  // sock_register 里注册套接字类型
+															// net_families[PF_INET] = inet_family_ops
+															// __sock_create 里跟据用户传入的 family ，从 net_families 取出对应的操作接口。
+
 
 /*
  *	Statistics counters of the socket lists
@@ -241,7 +245,10 @@ static int move_addr_to_user(struct sockaddr_storage *kaddr, int klen,
 	return __put_user(klen, ulen);
 }
 
-static struct kmem_cache *sock_inode_cachep __read_mostly;
+// static struct kmem_cache *sock_inode_cachep __read_mostly;  // 源码定义在这一行
+static struct kmem_cache *sock_inode_cachep;  // init_inodecache
+											// sock 文件系统使用的内存分配器
+
 
 static struct inode *sock_alloc_inode(struct super_block *sb)
 {
@@ -287,7 +294,7 @@ static void init_once(void *foo)
 
 	inode_init_once(&ei->vfs_inode);
 }
-
+// sock_init -> init_inodecache
 static int init_inodecache(void)
 {
 	sock_inode_cachep = kmem_cache_create("sock_inode_cache",
@@ -301,7 +308,7 @@ static int init_inodecache(void)
 		return -ENOMEM;
 	return 0;
 }
-
+// sockfs_mount 里引用，挂接文件系统时注册。
 static const struct super_operations sockfs_ops = {
 	.alloc_inode	= sock_alloc_inode,
 	.destroy_inode	= sock_destroy_inode,
@@ -317,6 +324,7 @@ static char *sockfs_dname(struct dentry *dentry, char *buffer, int buflen)
 				d_inode(dentry)->i_ino);
 }
 
+// sockfs_mount 里引用，挂接文件系统时注册。
 static const struct dentry_operations sockfs_dentry_operations = {
 	.d_dname  = sockfs_dname,
 };
@@ -356,6 +364,7 @@ static const struct xattr_handler sockfs_security_xattr_handler = {
 	.set = sockfs_security_xattr_set,
 };
 
+// sockfs_mount 里引用，挂接文件系统时注册。
 static const struct xattr_handler *sockfs_xattr_handlers[] = {
 	&sockfs_xattr_handler,
 	&sockfs_security_xattr_handler,
@@ -370,8 +379,10 @@ static struct dentry *sockfs_mount(struct file_system_type *fs_type,
 				  &sockfs_dentry_operations, SOCKFS_MAGIC);
 }
 
-static struct vfsmount *sock_mnt __read_mostly;
+// static struct vfsmount *sock_mnt __read_mostly; // 源码定义是这一行 
+static struct vfsmount *sock_mnt; // sock_init 里初始化
 
+// sock_init 里注册文件系统
 static struct file_system_type sock_fs_type = {
 	.name =		"sockfs",
 	.mount =	sockfs_mount,
@@ -559,7 +570,7 @@ static const struct inode_operations sockfs_inode_ops = {
  *	and initialised. The socket is then returned. If we are out of inodes
  *	NULL is returned.
  */
-
+// __sock_create -> sock_alloc
 struct socket *sock_alloc(void)
 {
 	struct inode *inode;
@@ -1109,6 +1120,7 @@ call_kill:
 }
 EXPORT_SYMBOL(sock_wake_async);
 
+// sock_create -> __sock_create
 int __sock_create(struct net *net, int family, int type, int protocol,
 			 struct socket **res, int kern)
 {
@@ -1180,7 +1192,7 @@ int __sock_create(struct net *net, int family, int type, int protocol,
 	/* Now protected by module ref count */
 	rcu_read_unlock();
 
-	err = pf->create(net, sock, protocol, kern);
+	err = pf->create(net, sock, protocol, kern);  // PF_INET : inet_family_ops : inet_create
 	if (err < 0)
 		goto out_module_put;
 
@@ -1217,7 +1229,7 @@ out_release:
 	goto out_sock_release;
 }
 EXPORT_SYMBOL(__sock_create);
-
+// sys_socket -> sock_create
 int sock_create(int family, int type, int protocol, struct socket **res)
 {
 	return __sock_create(current->nsproxy->net_ns, family, type, protocol, res, 0);
@@ -1230,7 +1242,9 @@ int sock_create_kern(struct net *net, int family, int type, int protocol, struct
 }
 EXPORT_SYMBOL(sock_create_kern);
 
-SYSCALL_DEFINE3(socket, int, family, int, type, int, protocol)
+// SYSCALL_DEFINE3 定义在 syscall.h 里
+// SYSCALL_DEFINE3(socket, int, family, int, type, int, protocol) // 源码定义在这一行  
+int sys_socket(int family, int type, int protocol)
 {
 	int retval;
 	struct socket *sock;
@@ -2461,6 +2475,7 @@ SYSCALL_DEFINE2(socketcall, int, call, unsigned long __user *, args)
  *	socket interface. The value ops->family corresponds to the
  *	socket system call protocol family.
  */
+// inet_init -> sock_register(&inet_family_ops)
 int sock_register(const struct net_proto_family *ops)
 {
 	int err;

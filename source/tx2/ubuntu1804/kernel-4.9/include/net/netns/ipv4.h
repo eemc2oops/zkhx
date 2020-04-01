@@ -26,7 +26,7 @@ struct ping_group_range {
 	seqlock_t	lock;
 	kgid_t		range[2];
 };
-
+// net.ipv4
 struct netns_ipv4 {
 #ifdef CONFIG_SYSCTL
 	struct ctl_table_header	*forw_hdr;
@@ -57,7 +57,9 @@ struct netns_ipv4 {
 	struct sock  * __percpu	*tcp_sk;
 	struct netns_frags	frags;
 #ifdef CONFIG_NETFILTER
-	struct xt_table		*iptable_filter;
+	struct xt_table		*iptable_filter;  // iptable_filter_table_init 里初始化 申请一段空间保存 table 信息
+										// 原始信息来自于 packet_filter
+										// iptable_filter_hook 里使用
 	struct xt_table		*iptable_mangle;
 	struct xt_table		*iptable_raw;
 	struct xt_table		*arptable_filter;

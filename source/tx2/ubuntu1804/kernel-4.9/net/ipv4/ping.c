@@ -145,6 +145,7 @@ fail:
 }
 EXPORT_SYMBOL_GPL(ping_get_port);
 
+// inet_create -> ping_hash
 int ping_hash(struct sock *sk)
 {
 	pr_debug("ping_hash(sk->port=%u)\n", inet_sk(sk)->inet_num);
@@ -253,7 +254,7 @@ static void inet_get_ping_group_range_net(struct net *net, kgid_t *low,
 	} while (read_seqretry(&net->ipv4.ping_group_range.lock, seq));
 }
 
-
+// inet_create -> ping_init_sock
 int ping_init_sock(struct sock *sk)
 {
 	struct net *net = sock_net(sk);
@@ -999,6 +1000,7 @@ bool ping_rcv(struct sk_buff *skb)
 }
 EXPORT_SYMBOL_GPL(ping_rcv);
 
+// 挂在 proto_list 里  inet_init 里挂树
 struct proto ping_prot = {
 	.name =		"PING",
 	.owner =	THIS_MODULE,

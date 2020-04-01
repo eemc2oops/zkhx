@@ -77,7 +77,7 @@ struct net_offload {
 
 /* This is used to register socket interfaces for IP protocols.  */
 struct inet_protosw {
-	struct list_head list;
+	struct list_head list; // 挂在 inetsw[type] 里    type是list的下一个字段
 
         /* These two fields form the lookup key.  */
 	unsigned short	 type;	   /* This is the 2nd argument to socket(2). */

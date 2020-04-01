@@ -22,7 +22,9 @@
 #include <linux/init.h>
 #include <uapi/linux/netfilter_ipv4/ip_tables.h>
 
-extern void ipt_init(void) __init;
+// extern void ipt_init(void) __init; 源码定义是这一行
+extern void ipt_init(void);  // 走读修改
+
 
 int ipt_register_table(struct net *net, const struct xt_table *table,
 		       const struct ipt_replace *repl,
@@ -31,6 +33,7 @@ void ipt_unregister_table(struct net *net, struct xt_table *table,
 			  const struct nf_hook_ops *ops);
 
 /* Standard entry. */
+// ipt_alloc_initial_table 里生成本结构  IPT_STANDARD_INIT 用来初始化
 struct ipt_standard {
 	struct ipt_entry entry;
 	struct xt_standard_target target;
@@ -46,7 +49,7 @@ struct ipt_error {
 	.target_offset	= sizeof(struct ipt_entry),			       \
 	.next_offset	= (__size),					       \
 }
-
+// xt_alloc_initial_table -> IPT_STANDARD_INIT
 #define IPT_STANDARD_INIT(__verdict)					       \
 {									       \
 	.entry		= IPT_ENTRY_INIT(sizeof(struct ipt_standard)),	       \

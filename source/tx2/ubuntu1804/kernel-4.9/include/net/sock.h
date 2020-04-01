@@ -145,6 +145,7 @@ typedef __u64 __bitwise __addrpair;
  *	This is the minimal network layer representation of sockets, the header
  *	for struct sock and struct inet_timewait_sock.
  */
+// sock.__sk_common
 struct sock_common {
 	/* skc_daddr and skc_rcv_saddr must be grouped on a 8 bytes aligned
 	 * address on 64bit arches : cf INET_MATCH()
@@ -169,7 +170,7 @@ struct sock_common {
 		};
 	};
 
-	unsigned short		skc_family;
+	unsigned short		skc_family;  // PF_INET
 	volatile unsigned char	skc_state;
 	unsigned char		skc_reuse:4;
 	unsigned char		skc_reuseport:1;
@@ -180,7 +181,7 @@ struct sock_common {
 		struct hlist_node	skc_bind_node;
 		struct hlist_node	skc_portaddr_node;
 	};
-	struct proto		*skc_prot;
+	struct proto		*skc_prot;  // inetsw_array
 	possible_net_t		skc_net;
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -305,6 +306,7 @@ struct sock_common {
   *	@sk_reuseport_cb: reuseport group container
   *	@sk_rcu: used during RCU grace period
   */
+// sk_alloc 里申请本结构
 struct sock {
 	/*
 	 * Now struct inet_timewait_sock also uses sock_common, so please just
@@ -325,7 +327,7 @@ struct sock {
 #define sk_addrpair		__sk_common.skc_addrpair
 #define sk_daddr		__sk_common.skc_daddr
 #define sk_rcv_saddr		__sk_common.skc_rcv_saddr
-#define sk_family		__sk_common.skc_family
+#define sk_family		__sk_common.skc_family    // PF_INET
 #define sk_state		__sk_common.skc_state
 #define sk_reuse		__sk_common.skc_reuse
 #define sk_reuseport		__sk_common.skc_reuseport
@@ -333,7 +335,7 @@ struct sock {
 #define sk_net_refcnt		__sk_common.skc_net_refcnt
 #define sk_bound_dev_if		__sk_common.skc_bound_dev_if
 #define sk_bind_node		__sk_common.skc_bind_node
-#define sk_prot			__sk_common.skc_prot
+#define sk_prot			__sk_common.skc_prot   // inetsw_array
 #define sk_net			__sk_common.skc_net
 #define sk_v6_daddr		__sk_common.skc_v6_daddr
 #define sk_v6_rcv_saddr	__sk_common.skc_v6_rcv_saddr
@@ -411,7 +413,7 @@ struct sock {
 	int			sk_rcvlowat;
 	unsigned long	        sk_lingertime;
 	struct sk_buff_head	sk_error_queue;
-	struct proto		*sk_prot_creator;
+	struct proto		*sk_prot_creator;  // inetsw_array
 	rwlock_t		sk_callback_lock;
 	int			sk_err,
 				sk_err_soft;
@@ -440,13 +442,23 @@ struct sock {
 #endif
 	struct sock_cgroup_data	sk_cgrp_data;
 	struct mem_cgroup	*sk_memcg;
-	void			(*sk_state_change)(struct sock *sk);
-	void			(*sk_data_ready)(struct sock *sk);
-	void			(*sk_write_space)(struct sock *sk);
-	void			(*sk_error_report)(struct sock *sk);
-	int			(*sk_backlog_rcv)(struct sock *sk,
-						  struct sk_buff *skb);
-	void                    (*sk_destruct)(struct sock *sk);
+	void			(*sk_state_change)(struct sock *sk);  // sock_def_wakeup
+	
+	void			(*sk_data_ready)(struct sock *sk);  // sock_def_readable
+	
+	void			(*sk_write_space)(struct sock *sk);  // sock_def_write_space
+	
+	void			(*sk_error_report)(struct sock *sk);  // sock_def_error_report
+	
+	int			(*sk_backlog_rcv)(struct sock *sk,   // inet_create 里赋值
+						  struct sk_buff *skb);	// tcp : tcp_v4_do_rcv 
+													// udp : __udp_queue_rcv_skb
+													// ping : ping_queue_rcv_skb
+													// raw : raw_rcv_skb
+													
+	void                    (*sk_destruct)(struct sock *sk);  // sock_init_data 里定义默认 sock_def_destruct
+														// inet_create 里改成 inet_sock_destruct
+														
 	struct sock_reuseport __rcu	*sk_reuseport_cb;
 	struct rcu_head		sk_rcu;
 };
@@ -966,80 +978,81 @@ static inline void sk_prot_clear_nulls(struct sock *sk, int size)
 /* Networking protocol blocks we attach to sockets.
  * socket layer -> transport layer interface
  */
+// tcp_prot udp_prot raw_prot ping_prot
 struct proto {
 	void			(*close)(struct sock *sk,
-					long timeout);
+					long timeout);    // tcp_close
 	int			(*connect)(struct sock *sk,
 					struct sockaddr *uaddr,
-					int addr_len);
-	int			(*disconnect)(struct sock *sk, int flags);
+					int addr_len);  // tcp_v4_connect
+	int			(*disconnect)(struct sock *sk, int flags);  // tcp_disconnect
 
-	struct sock *		(*accept)(struct sock *sk, int flags, int *err);
+	struct sock *		(*accept)(struct sock *sk, int flags, int *err);  // inet_csk_accept
 
 	int			(*ioctl)(struct sock *sk, int cmd,
 					 unsigned long arg);
-	int			(*init)(struct sock *sk);
-	void			(*destroy)(struct sock *sk);
-	void			(*shutdown)(struct sock *sk, int how);
+	int			(*init)(struct sock *sk);  // tcp_v4_init_sock
+	void			(*destroy)(struct sock *sk);  // tcp_v4_destroy_sock
+	void			(*shutdown)(struct sock *sk, int how); // tcp_shutdown
 	int			(*setsockopt)(struct sock *sk, int level,
 					int optname, char __user *optval,
-					unsigned int optlen);
+					unsigned int optlen);  // tcp_setsockopt
 	int			(*getsockopt)(struct sock *sk, int level,
 					int optname, char __user *optval,
-					int __user *option);
+					int __user *option);  // tcp_getsockopt
 #ifdef CONFIG_COMPAT
 	int			(*compat_setsockopt)(struct sock *sk,
 					int level,
 					int optname, char __user *optval,
-					unsigned int optlen);
+					unsigned int optlen);  // compat_tcp_setsockopt
 	int			(*compat_getsockopt)(struct sock *sk,
 					int level,
 					int optname, char __user *optval,
-					int __user *option);
+					int __user *option);  // compat_tcp_getsockopt
 	int			(*compat_ioctl)(struct sock *sk,
 					unsigned int cmd, unsigned long arg);
 #endif
 	int			(*sendmsg)(struct sock *sk, struct msghdr *msg,
-					   size_t len);
+					   size_t len); // tcp_sendmsg
 	int			(*recvmsg)(struct sock *sk, struct msghdr *msg,
 					   size_t len, int noblock, int flags,
-					   int *addr_len);
+					   int *addr_len); // tcp_recvmsg
 	int			(*sendpage)(struct sock *sk, struct page *page,
-					int offset, size_t size, int flags);
+					int offset, size_t size, int flags);  // tcp_sendpage
 	int			(*bind)(struct sock *sk,
 					struct sockaddr *uaddr, int addr_len);
 
 	int			(*backlog_rcv) (struct sock *sk,
-						struct sk_buff *skb);
+						struct sk_buff *skb); // tcp_v4_do_rcv
 
-	void		(*release_cb)(struct sock *sk);
+	void		(*release_cb)(struct sock *sk);  // tcp_release_cb
 
 	/* Keeping track of sk's, looking them up, and port selection methods. */
-	int			(*hash)(struct sock *sk);
-	void			(*unhash)(struct sock *sk);
+	int			(*hash)(struct sock *sk); // inet_hash
+	void			(*unhash)(struct sock *sk);  // inet_unhash
 	void			(*rehash)(struct sock *sk);
-	int			(*get_port)(struct sock *sk, unsigned short snum);
+	int			(*get_port)(struct sock *sk, unsigned short snum); // inet_csk_get_port
 
 	/* Keeping track of sockets in use */
 #ifdef CONFIG_PROC_FS
 	unsigned int		inuse_idx;
 #endif
 
-	bool			(*stream_memory_free)(const struct sock *sk);
+	bool			(*stream_memory_free)(const struct sock *sk);  // tcp_stream_memory_free
 	/* Memory pressure */
-	void			(*enter_memory_pressure)(struct sock *sk);
-	atomic_long_t		*memory_allocated;	/* Current allocated memory. */
-	struct percpu_counter	*sockets_allocated;	/* Current number of sockets. */
+	void			(*enter_memory_pressure)(struct sock *sk); // tcp_enter_memory_pressure
+	atomic_long_t		*memory_allocated;	/* Current allocated memory. */  // tcp_memory_allocated
+	struct percpu_counter	*sockets_allocated;	/* Current number of sockets. */  // tcp_sockets_allocated
 	/*
 	 * Pressure flag: try to collapse.
 	 * Technical note: it is used by multiple contexts non atomically.
 	 * All the __sk_mem_schedule() is of this nature: accounting
 	 * is strict, actions are advisory and have some latency.
 	 */
-	int			*memory_pressure;
-	long			*sysctl_mem;
-	int			*sysctl_wmem;
-	int			*sysctl_rmem;
+	int			*memory_pressure;  // tcp_memory_pressure
+	long			*sysctl_mem;  // sysctl_tcp_mem
+	int			*sysctl_wmem;  // sysctl_tcp_wmem
+	int			*sysctl_rmem;  // sysctl_tcp_rmem
 	int			max_header;
 	bool			no_autobind;
 
@@ -1047,13 +1060,13 @@ struct proto {
 	unsigned int		obj_size;
 	int			slab_flags;
 
-	struct percpu_counter	*orphan_count;
+	struct percpu_counter	*orphan_count;  // tcp_orphan_count
 
-	struct request_sock_ops	*rsk_prot;
-	struct timewait_sock_ops *twsk_prot;
+	struct request_sock_ops	*rsk_prot;  // tcp_request_sock_ops
+	struct timewait_sock_ops *twsk_prot;  // tcp_timewait_sock_ops
 
 	union {
-		struct inet_hashinfo	*hashinfo;
+		struct inet_hashinfo	*hashinfo;  // tcp : tcp_hashinfo 
 		struct udp_table	*udp_table;
 		struct raw_hashinfo	*raw_hash;
 	} h;
@@ -1062,11 +1075,12 @@ struct proto {
 
 	char			name[32];
 
-	struct list_head	node;
+	struct list_head	node;  // 挂在 proto_list 里 
+							 // proto_register 挂树
 #ifdef SOCK_REFCNT_DEBUG
 	atomic_t		socks;
 #endif
-	int			(*diag_destroy)(struct sock *sk, int err);
+	int			(*diag_destroy)(struct sock *sk, int err);  // tcp_abort
 };
 
 int proto_register(struct proto *prot, int alloc_slab);
@@ -1614,7 +1628,7 @@ static inline int sk_tx_queue_get(const struct sock *sk)
 {
 	return sk ? sk->sk_tx_queue_mapping : -1;
 }
-
+// sock_init_data -> sk_set_socket
 static inline void sk_set_socket(struct sock *sk, struct socket *sock)
 {
 	sk_tx_queue_clear(sk);

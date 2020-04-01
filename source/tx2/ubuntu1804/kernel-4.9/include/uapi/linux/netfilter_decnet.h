@@ -25,6 +25,7 @@
 #define NFC_DN_IF_OUT		0x0008
 #endif /* ! __KERNEL__ */
 
+// netfilter 的HOOK类型。对应iptables的链
 /* DECnet Hooks */
 /* After promisc drops, checksum checks. */
 #define NF_DN_PRE_ROUTING	0

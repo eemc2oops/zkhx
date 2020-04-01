@@ -126,6 +126,30 @@ EXPORT_SYMBOL(lockdep_rtnl_is_held);
 #endif /* #ifdef CONFIG_PROVE_LOCKING */
 
 static struct rtnl_link *rtnl_msg_handlers[RTNL_FAMILY_MAX + 1];
+	/*
+	                                          { doit,          dumpit,      calcit }
+	__rtnl_register 里注册 实际上 rtnl_msg_handlers 是个二维数组
+	rtnl_msg_handlers[PF_INET][RTM_NEWADDR] = { inet_rtm_newaddr, NULL, NULL }
+	rtnl_msg_handlers[PF_INET][RTM_DELADDR] = { inet_rtm_deladdr, NULL, NULL }
+	rtnl_msg_handlers[PF_INET][RTM_GETADDR] = { NULL, inet_dump_ifaddr, NULL }
+
+	rtnl_msg_handlers[PF_INET][RTM_GETNETCONF] = { inet_netconf_get_devconf, inet_netconf_dump_devconf, NULL }
+
+	rtnetlink_init  里注册 路由表相关的接口
+	rtnl_msg_handlers[PF_UNSPEC][RTM_GETLINK] = { rtnl_getlink, rtnl_dump_ifinfo, rtnl_calcit }
+	rtnl_msg_handlers[PF_UNSPEC][RTM_SETLINK] = { rtnl_setlink, NULL, NULL }
+	rtnl_msg_handlers[PF_UNSPEC][RTM_NEWLINK] = { rtnl_newlink, NULL, NULL }
+	rtnl_msg_handlers[PF_UNSPEC][RTM_DELLINK] = { rtnl_dellink, NULL, NULL }
+	rtnl_msg_handlers[PF_UNSPEC][RTM_GETADDR] = { NULL, rtnl_dump_all, NULL }
+	rtnl_msg_handlers[PF_UNSPEC][RTM_GETROUTE] = { NULL, rtnl_dump_all, NULL }
+	rtnl_msg_handlers[PF_BRIDGE][RTM_NEWNEIGH] = { rtnl_fdb_add, NULL, NULL }
+	rtnl_msg_handlers[PF_BRIDGE][RTM_DELNEIGH] = { rtnl_fdb_del, NULL, NULL }
+	rtnl_msg_handlers[PF_BRIDGE][RTM_GETNEIGH] = { NULL, rtnl_fdb_dump, NULL }
+	rtnl_msg_handlers[PF_BRIDGE][RTM_GETLINK] = { NULL, rtnl_bridge_getlink, NULL }
+	rtnl_msg_handlers[PF_BRIDGE][RTM_DELLINK] = { rtnl_bridge_dellink, NULL, NULL }
+	rtnl_msg_handlers[PF_BRIDGE][RTM_SETLINK] = { rtnl_bridge_setlink, NULL, NULL }
+	rtnl_msg_handlers[PF_UNSPEC][RTM_GETSTATS] = { rtnl_stats_get, rtnl_stats_dump, NULL }
+	*/
 
 static inline int rtm_msgindex(int msgtype)
 {
@@ -204,6 +228,7 @@ static rtnl_calcit_func rtnl_get_calcit(int protocol, int msgindex)
  *
  * Returns 0 on success or a negative error code.
  */
+// rtnl_register -> __rtnl_register
 int __rtnl_register(int protocol, int msgtype,
 		    rtnl_doit_func doit, rtnl_dumpit_func dumpit,
 		    rtnl_calcit_func calcit)
@@ -245,6 +270,14 @@ EXPORT_SYMBOL_GPL(__rtnl_register);
  * handlers for a protocol. Meant for use in init functions where lack
  * of memory implies no sense in continuing.
  */
+/*
+devinet_init -> rtnl_register(PF_INET, RTM_NEWADDR, inet_rtm_newaddr, NULL, NULL)
+devinet_init -> rtnl_register(PF_INET, RTM_DELADDR, inet_rtm_deladdr, NULL, NULL)
+devinet_init -> rtnl_register(PF_INET, RTM_GETADDR, NULL, inet_dump_ifaddr, NULL)
+devinet_init -> rtnl_register(PF_INET, RTM_GETNETCONF, inet_netconf_get_devconf, inet_netconf_dump_devconf, NULL)
+
+rtnetlink_init -> rtnl_register
+*/
 void rtnl_register(int protocol, int msgtype,
 		   rtnl_doit_func doit, rtnl_dumpit_func dumpit,
 		   rtnl_calcit_func calcit)

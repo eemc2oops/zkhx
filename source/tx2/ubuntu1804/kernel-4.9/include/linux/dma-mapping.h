@@ -347,7 +347,7 @@ static inline void dma_unmap_resource(struct device *dev, dma_addr_t addr,
 		ops->unmap_resource(dev, addr, size, dir, attrs);
 	debug_dma_unmap_resource(dev, addr, size, dir);
 }
-
+// e1000_copybreak -> dma_sync_single_for_cpu
 static inline void dma_sync_single_for_cpu(struct device *dev, dma_addr_t addr,
 					   size_t size,
 					   enum dma_data_direction dir)
